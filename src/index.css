@@ -1,0 +1,15 @@
+/* Сброс стилей — переопределяет стандартные настройки Vite */
+*, *::before, *::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html, body {
+  height: 100%;
+  background: #0d0d0d;
+}
+
+#root {
+  height: 100%;
+}
