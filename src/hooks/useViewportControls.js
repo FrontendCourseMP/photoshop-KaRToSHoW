@@ -67,6 +67,32 @@ export default function useViewportControls(imageInfo, viewportRef) {
     setOffset(centerOffset(vp.clientWidth, vp.clientHeight, imageInfo.width, imageInfo.height, value));
   }, [imageInfo, viewportRef]);
 
+  const zoomToArea = useCallback((selection) => {
+    if (!imageInfo || !viewportRef.current) return;
+    const vp = viewportRef.current;
+    const x1 = selection.x;
+    const y1 = selection.y;
+    const x2 = selection.x + selection.width;
+    const y2 = selection.y + selection.height;
+
+    const imgX1 = (x1 - offsetRef.current.x) / zoomRef.current;
+    const imgY1 = (y1 - offsetRef.current.y) / zoomRef.current;
+    const imgX2 = (x2 - offsetRef.current.x) / zoomRef.current;
+    const imgY2 = (y2 - offsetRef.current.y) / zoomRef.current;
+
+    const selW = Math.max(1, imgX2 - imgX1);
+    const selH = Math.max(1, imgY2 - imgY1);
+    const nextZoom = Math.min(vp.clientWidth / selW, vp.clientHeight / selH);
+    const centerX = (imgX1 + imgX2) / 2;
+    const centerY = (imgY1 + imgY2) / 2;
+
+    setZoom(nextZoom);
+    setOffset({
+      x: vp.clientWidth / 2 - nextZoom * centerX,
+      y: vp.clientHeight / 2 - nextZoom * centerY,
+    });
+  }, [imageInfo, viewportRef]);
+
   // Применяет произвольный уровень масштабирования и центрирует изображение
   const handleZoomChange = useCallback((z) => {
     if (!imageInfo || !viewportRef.current) return;
@@ -105,6 +131,7 @@ export default function useViewportControls(imageInfo, viewportRef) {
     zoomIn,
     zoomOut,
     zoomPreset,
+    zoomToArea,
     handleZoomChange,
     onMouseDown,
   };

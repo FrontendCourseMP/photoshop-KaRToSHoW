@@ -1,18 +1,36 @@
-import { useState, useRef, useCallback, useMemo } from 'react';
+import { useState, useRef, useCallback, useMemo, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import { formatZoom } from './utils/zoom';
 import useLanguage from './hooks/useLanguage';
 import useImageManager from './hooks/useImageManager';
 import useViewportControls from './hooks/useViewportControls';
 import useErrorState from './hooks/useErrorState';
+import useHotkeys from './hooks/useHotkeys';
 import './App.css';
-import MenuBar from './components/MenuBar';
-import Toolbar from './components/Toolbar';
-import ToolsPanel from './components/ToolsPanel';
-import Viewport from './components/Viewport';
-import InfoPanel from './components/InfoPanel';
-import StatusBar from './components/StatusBar';
-import ErrorBanner from './components/ErrorBanner';
+
+function hexToRgb(hex) {
+  const normalized = hex.replace('#', '');
+  const r = parseInt(normalized.slice(0, 2), 16);
+  const g = parseInt(normalized.slice(2, 4), 16);
+  const b = parseInt(normalized.slice(4, 6), 16);
+  return { r, g, b };
+}
+
+function lightenColor(hex, amount) {
+  const { r, g, b } = hexToRgb(hex);
+  const rr = Math.round(r + (255 - r) * amount);
+  const gg = Math.round(g + (255 - g) * amount);
+  const bb = Math.round(b + (255 - b) * amount);
+  return `rgb(${rr}, ${gg}, ${bb})`;
+}
+import MenuBar from './components/layout/MenuBar';
+import Toolbar from './components/controls/Toolbar';
+import ToolsPanel from './components/controls/ToolsPanel';
+import Viewport from './components/view/Viewport';
+import InfoPanel from './components/layout/InfoPanel';
+import StatusBar from './components/layout/StatusBar';
+import ErrorBanner from './components/ui/ErrorBanner';
+import ThemeSettings from './components/ui/ThemeSettings';
 
 // Корневой компонент приложения, собирает хуки и визуальные блоки
 export default function App() {
@@ -23,10 +41,13 @@ export default function App() {
   const viewportRef = useRef(null);
 
   const [imageInfo, setImageInfo] = useState(null);
+  const [accentColor, setAccentColor] = useState(() => localStorage.getItem('accentColor') || '#5B8CFF');
+  const [themeMode, setThemeMode] = useState(() => localStorage.getItem('themeMode') || 'dark');
+  const [showThemeSettings, setShowThemeSettings] = useState(false);
   const { error, setError, clearError } = useErrorState();
 
   const viewport = useViewportControls(imageInfo, viewportRef);
-  const { zoom, offset, activeTool, setActiveTool, cursor, fitToScreen, zoomTo100, zoomIn, zoomOut, handleZoomChange, onMouseDown } = viewport;
+  const { zoom, offset, activeTool, setActiveTool, cursor, fitToScreen, zoomTo100, zoomIn, zoomOut, zoomToArea, handleZoomChange, onMouseDown } = viewport;
 
   // Рисует полученные данные изображения на canvas и обновляет размеры
   const drawImageData = useCallback((imgData) => {
@@ -36,6 +57,34 @@ export default function App() {
   }, []);
 
   const { handleFile, saveAs } = useImageManager({ canvasRef, drawImageData, setImageInfo, setError, t });
+  const fileInputRef = useRef(null);
+
+  const accentSoft = useMemo(() => lightenColor(accentColor, 0.6), [accentColor]);
+  const accentBg = useMemo(() => {
+    const { r, g, b } = hexToRgb(accentColor);
+    return `rgba(${r}, ${g}, ${b}, 0.14)`;
+  }, [accentColor]);
+  const accentBorder = useMemo(() => {
+    const { r, g, b } = hexToRgb(accentColor);
+    return `rgba(${r}, ${g}, ${b}, 0.28)`;
+  }, [accentColor]);
+
+  useEffect(() => {
+    localStorage.setItem('accentColor', accentColor);
+    localStorage.setItem('themeMode', themeMode);
+  }, [accentColor, themeMode]);
+
+  const hotkeys = useMemo(() => ({
+    onOpenFile: () => fileInputRef.current?.click(),
+    onZoomIn: zoomIn,
+    onZoomOut: zoomOut,
+    onFitScreen: fitToScreen,
+    onActualSize: zoomTo100,
+    onZoomTool: () => setActiveTool('zoom'),
+    onHandTool: () => setActiveTool('hand'),
+  }), [zoomIn, zoomOut, fitToScreen, zoomTo100, setActiveTool]);
+
+  useHotkeys(hotkeys);
 
   // Декларативная конфигурация меню для MenuBar
   const menuConfig = useMemo(() => ({
@@ -54,35 +103,56 @@ export default function App() {
       actualSize: zoomTo100,
       zoomPreset: handleZoomChange,
       setLanguage,
+      showThemeSettings: () => setShowThemeSettings(true),
+      themeLight: () => setThemeMode('light'),
+      themeDark: () => setThemeMode('dark'),
+      languageEnglish: () => setLanguage('en'),
+      languageRussian: () => setLanguage('ru'),
     },
     file: [
-      { label: t('menu.open'), actionKey: 'browse' },
+      { label: t('menu.open'), actionKey: 'browse', shortcut: 'Ctrl+O' },
       '---',
       { label: t('menu.exportPng'), disabled: !imageInfo, actionKey: 'exportPng' },
       { label: t('menu.exportJpeg'), disabled: !imageInfo, actionKey: 'exportJpeg' },
       { label: t('menu.exportGb7'), disabled: !imageInfo, actionKey: 'exportGb7' },
     ],
     view: [
-      { label: t('menu.zoomIn'), actionKey: 'zoomIn' },
-      { label: t('menu.zoomOut'), actionKey: 'zoomOut' },
+      { label: t('menu.zoomIn'), actionKey: 'zoomIn', shortcut: 'Ctrl++' },
+      { label: t('menu.zoomOut'), actionKey: 'zoomOut', shortcut: 'Ctrl+-' },
       '---',
-      { label: t('menu.fitScreen'), disabled: !imageInfo, actionKey: 'fitScreen' },
-      { label: t('menu.actualSize'), disabled: !imageInfo, actionKey: 'actualSize' },
+      { label: t('menu.fitScreen'), disabled: !imageInfo, actionKey: 'fitScreen', shortcut: 'Ctrl+2' },
+      { label: t('menu.actualSize'), disabled: !imageInfo, actionKey: 'actualSize', shortcut: 'Ctrl+1' },
       '---',
       ...[25, 50, 100, 200, 400].map(v => ({ label: `${v}%`, disabled: !imageInfo, action: () => handleZoomChange(v / 100) })),
     ],
     settings: [
-      { label: t('menu.languageEnglish'), disabled: language === 'en', action: () => setLanguage('en') },
-      { label: t('menu.languageRussian'), disabled: language === 'ru', action: () => setLanguage('ru') },
+      { label: t('menu.themeSettings'), actionKey: 'showThemeSettings', shortcut: 'Ctrl+Shift+C' },
     ],
-  }), [t, imageInfo, handleFile, saveAs, zoomIn, zoomOut, fitToScreen, zoomTo100, handleZoomChange, language, setLanguage]);
+  }), [t, imageInfo, handleFile, saveAs, zoomIn, zoomOut, fitToScreen, zoomTo100, handleZoomChange, language, setLanguage, themeMode]);
 
   const activeToolLabel = activeTool === 'hand' ? t('info.hand') : t('info.zoomTool');
 
   return (
-    <div className="app">
+    <div className={`app theme-${themeMode}`} style={{
+      '--c-accent': accentColor,
+      '--c-accent-2': accentSoft,
+      '--c-accent-bg': accentBg,
+      '--c-accent-border': accentBorder,
+    }}>
 
-      <MenuBar menuConfig={menuConfig} />
+      <MenuBar menuConfig={menuConfig} fileInputRef={fileInputRef} />
+      {showThemeSettings && (
+        <ThemeSettings
+          t={t}
+          themeMode={themeMode}
+          accentColor={accentColor}
+          language={language}
+          onClose={() => setShowThemeSettings(false)}
+          onThemeModeChange={setThemeMode}
+          onAccentColorChange={setAccentColor}
+          onLanguageChange={setLanguage}
+        />
+      )}
       <ErrorBanner t={t} error={error} onClose={clearError} />
 
       {/* Панель инструментов */}
@@ -106,6 +176,8 @@ export default function App() {
           t={t}
           imageInfo={imageInfo}
           cursor={cursor}
+          activeTool={activeTool}
+          zoomToArea={zoomToArea}
           onMouseDown={onMouseDown}
           onOpenFile={handleFile}
           onError={setError}

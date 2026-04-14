@@ -1,5 +1,5 @@
 import ZoomSelect from './ZoomSelect';
-import { IconZoomIn, IconZoomOut } from './Icons';
+import { IconZoomIn, IconZoomOut } from '../ui/Icons';
 
 export default function Toolbar({ t, imageInfo, zoom, onZoomChange, zoomIn, zoomOut, fitToScreen, zoomTo100 }) {
   return (
@@ -11,10 +11,6 @@ export default function Toolbar({ t, imageInfo, zoom, onZoomChange, zoomIn, zoom
         <div className="tbar-sep" />
         <button className="tbtn" title={t('toolbar.fitTitle')} onClick={fitToScreen} disabled={!imageInfo}>{t('toolbar.fit')}</button>
         <button className="tbtn" title={t('toolbar.actualTitle')} onClick={zoomTo100} disabled={!imageInfo}>{t('toolbar.actual')}</button>
-      </div>
-
-      <div className="tbar-group tbar-group--right">
-        {imageInfo && <span className="tbar-dim">{imageInfo.width} × {imageInfo.height} px</span>}
       </div>
     </div>
   );

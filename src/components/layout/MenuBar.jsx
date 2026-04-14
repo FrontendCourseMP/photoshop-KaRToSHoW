@@ -1,30 +1,35 @@
 import { useRef } from 'react';
-import Menu from './Menu';
-import { ZOOM_PRESETS } from '../utils/zoom';
+import Menu from '../ui/Menu';
+import { ZOOM_PRESETS } from '../../utils/zoom';
 
 // Компонент верхнего меню, который строит пункты из конфигурации
-export default function MenuBar({ menuConfig }) {
-  const fileInputRef = useRef(null);
+export default function MenuBar({ menuConfig, fileInputRef }) {
+  const localFileInputRef = useRef(null);
+  const fileRef = fileInputRef ?? localFileInputRef;
   const { fileLabel, viewLabel, settingsLabel, fileAccept, file, view, settings, actions } = menuConfig;
 
   // Сопоставляет ключ действия с переданной функцией или обработчиком
   const resolveAction = (item) => {
     if (item.action) return item.action;
-    if (item.actionKey === 'browse') return () => fileInputRef.current?.click();
+    if (item.actionKey === 'browse') return () => fileRef.current?.click();
     return actions?.[item.actionKey] ?? null;
   };
 
-  const resolvedFileItems = file.map((item) =>
-    item === '---' ? item : { ...item, action: resolveAction(item) }
-  );
+  const resolveItem = (item) => {
+    if (item === '---') return item;
+    return {
+      ...item,
+      action: item.children ? undefined : resolveAction(item),
+      children: item.children?.map(child => ({ ...child, action: resolveAction(child) })),
+    };
+  };
 
-  const resolvedViewItems = view.map((item) =>
-    item === '---' ? item : { ...item, action: resolveAction(item) }
-  );
-
-  const resolvedSettingsItems = settings.map((item) =>
-    item === '---' ? item : { ...item, action: resolveAction(item) }
-  );
+  const resolvedFileItems = file.map(resolveItem);
+  const resolvedViewItems = view.map(resolveItem);
+  const resolvedSettingsItems = settings.map(resolveItem);
+  const settingsAction = resolvedSettingsItems.length === 1 && !resolvedSettingsItems[0].children
+    ? resolvedSettingsItems[0].action
+    : null;
 
   return (
     <div className="menubar">
@@ -34,12 +39,18 @@ export default function MenuBar({ menuConfig }) {
       </span>
       <Menu label={fileLabel} items={resolvedFileItems} />
       <Menu label={viewLabel} items={resolvedViewItems} />
-      <Menu label={settingsLabel} items={resolvedSettingsItems} />
       <span className="menubar__ghost">Image</span>
       <span className="menubar__ghost">Filter</span>
+      {settingsAction ? (
+        <button className="menu__trigger" type="button" onClick={settingsAction}>
+          {settingsLabel}
+        </button>
+      ) : (
+        <Menu label={settingsLabel} items={resolvedSettingsItems} />
+      )}
       <span className="menubar__ghost">Help</span>
       <input
-        ref={fileInputRef}
+        ref={fileRef}
         type="file"
         accept={fileAccept}
         style={{ display: 'none' }}

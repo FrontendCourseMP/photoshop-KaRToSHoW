@@ -1,14 +1,18 @@
-import { IconZoomTool, IconHand } from './Icons';
+import { IconZoomTool, IconHand } from '../ui/Icons';
 
 export default function ToolsPanel({ t, activeTool, setActiveTool }) {
   return (
     <aside className="tools">
       <button className={`tool${activeTool === 'zoom' ? ' tool--active' : ''}`}
-        title={t('toolbar.zoomToolTitle')} onClick={() => setActiveTool('zoom')}>
+        title={`${t('toolbar.zoomToolTitle')} (Z)`}
+        aria-label={t('toolbar.zoomToolTitle')}
+        onClick={() => setActiveTool('zoom')}>
         <IconZoomTool />
       </button>
       <button className={`tool${activeTool === 'hand' ? ' tool--active' : ''}`}
-        title={t('toolbar.handPanTitle')} onClick={() => setActiveTool('hand')}>
+        title={`${t('toolbar.handPanTitle')} (H)`}
+        aria-label={t('toolbar.handPanTitle')}
+        onClick={() => setActiveTool('hand')}>
         <IconHand />
       </button>
       <div className="tools__sep" />

@@ -1,11 +1,13 @@
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 
 // Список поддерживаемых форматов для drag & drop
 const SUPPORTED_EXTENSIONS = ['.png', '.jpg', '.jpeg', '.gb7'];
 
 // Просмотр изображения с drag/drop и отображением холста
-export default function Viewport({ t, imageInfo, cursor, onMouseDown, onOpenFile, onError, canvasRef, viewportRef, clearError, offset, zoom }) {
+export default function Viewport({ t, imageInfo, cursor, onMouseDown, onOpenFile, onError, canvasRef, viewportRef, clearError, offset, zoom, activeTool, zoomToArea }) {
   const [isDragging, setIsDragging] = useState(false);
+  const [selection, setSelection] = useState(null);
+  const selectionStartRef = useRef(null);
 
   // Проверяет, что файл имеет допустимое расширение
   const validateFile = (file) => {
@@ -36,12 +38,59 @@ export default function Viewport({ t, imageInfo, cursor, onMouseDown, onOpenFile
     setIsDragging(false);
   };
 
+  const startSelection = (e) => {
+    const rect = e.currentTarget.getBoundingClientRect();
+    const x = e.clientX - rect.left;
+    const y = e.clientY - rect.top;
+    selectionStartRef.current = { x, y };
+    setSelection({ x, y, width: 0, height: 0 });
+    e.currentTarget.setPointerCapture?.(e.pointerId);
+  };
+
+  const updateSelection = (e) => {
+    if (!selectionStartRef.current) return;
+    const rect = e.currentTarget.getBoundingClientRect();
+    const x = e.clientX - rect.left;
+    const y = e.clientY - rect.top;
+    const x1 = Math.min(selectionStartRef.current.x, x);
+    const y1 = Math.min(selectionStartRef.current.y, y);
+    setSelection({ x: x1, y: y1, width: Math.abs(x - selectionStartRef.current.x), height: Math.abs(y - selectionStartRef.current.y) });
+  };
+
+  const finishSelection = (e) => {
+    if (!selectionStartRef.current) return;
+    const rect = e.currentTarget.getBoundingClientRect();
+    const x = e.clientX - rect.left;
+    const y = e.clientY - rect.top;
+    const x1 = Math.min(selectionStartRef.current.x, x);
+    const y1 = Math.min(selectionStartRef.current.y, y);
+    const width = Math.abs(x - selectionStartRef.current.x);
+    const height = Math.abs(y - selectionStartRef.current.y);
+    selectionStartRef.current = null;
+    setSelection(null);
+    e.currentTarget.releasePointerCapture?.(e.pointerId);
+    if (width > 10 && height > 10) {
+      zoomToArea?.({ x: x1, y: y1, width, height });
+    }
+  };
+
+  const handlePointerDown = (e) => {
+    if (e.button === 0 && activeTool === 'zoom' && imageInfo) {
+      e.preventDefault();
+      startSelection(e);
+    }
+    onMouseDown?.(e);
+  };
+
   return (
     <div
       className={`viewport${isDragging ? ' viewport--drag' : ''}`}
       ref={viewportRef}
       style={{ cursor }}
-      onMouseDown={onMouseDown}
+      onPointerDown={handlePointerDown}
+      onPointerMove={updateSelection}
+      onPointerUp={finishSelection}
+      onPointerCancel={finishSelection}
       onDrop={handleDrop}
       onDragOver={handleDragOver}
       onDragLeave={handleDragLeave}
@@ -63,6 +112,13 @@ export default function Viewport({ t, imageInfo, cursor, onMouseDown, onOpenFile
           ))}</p>
           <p className="empty__formats">{t('empty.formats')}</p>
         </div>
+      )}
+
+      {selection && (
+        <div
+          className="zoom-selection"
+          style={{ left: selection.x, top: selection.y, width: selection.width, height: selection.height }}
+        />
       )}
 
       <div className="scene"
