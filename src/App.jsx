@@ -47,7 +47,8 @@ export default function App() {
   const { error, setError, clearError } = useErrorState();
 
   const viewport = useViewportControls(imageInfo, viewportRef);
-  const { zoom, offset, activeTool, setActiveTool, cursor, fitToScreen, zoomTo100, zoomIn, zoomOut, zoomToArea, handleZoomChange, onMouseDown } = viewport;
+  const { zoom, offset, activeTool, setActiveTool, cursor, fitToScreen, fillToScreen, zoomTo100, zoomIn, zoomOut, zoomToArea, zoomOutFromArea, handleZoomChange, onMouseDown } = viewport;
+  const [zoomMode, setZoomMode] = useState('in');
 
   // Рисует полученные данные изображения на canvas и обновляет размеры
   const drawImageData = useCallback((imgData) => {
@@ -159,11 +160,11 @@ export default function App() {
       <Toolbar
         t={t}
         imageInfo={imageInfo}
-        zoom={zoom}
-        onZoomChange={handleZoomChange}
-        zoomIn={zoomIn}
-        zoomOut={zoomOut}
+        activeTool={activeTool}
+        zoomMode={zoomMode}
+        onSetZoomMode={setZoomMode}
         fitToScreen={fitToScreen}
+        fillToScreen={fillToScreen}
         zoomTo100={zoomTo100}
       />
 
@@ -177,7 +178,9 @@ export default function App() {
           imageInfo={imageInfo}
           cursor={cursor}
           activeTool={activeTool}
+          zoomMode={zoomMode}
           zoomToArea={zoomToArea}
+          zoomOutFromArea={zoomOutFromArea}
           onMouseDown={onMouseDown}
           onOpenFile={handleFile}
           onError={setError}
@@ -186,6 +189,11 @@ export default function App() {
           clearError={clearError}
           offset={offset}
           zoom={zoom}
+          onZoomChange={handleZoomChange}
+          zoomIn={zoomIn}
+          zoomOut={zoomOut}
+          fitToScreen={fitToScreen}
+          zoomTo100={zoomTo100}
         />
 
         {/* Правая панель информации */}

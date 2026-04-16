@@ -1,10 +1,12 @@
 import { useState, useRef } from 'react';
+import { IconZoomIn, IconZoomOut } from '../ui/Icons';
+import ZoomSelect from '../controls/ZoomSelect';
 
 // Список поддерживаемых форматов для drag & drop
 const SUPPORTED_EXTENSIONS = ['.png', '.jpg', '.jpeg', '.gb7'];
 
 // Просмотр изображения с drag/drop и отображением холста
-export default function Viewport({ t, imageInfo, cursor, onMouseDown, onOpenFile, onError, canvasRef, viewportRef, clearError, offset, zoom, activeTool, zoomToArea }) {
+export default function Viewport({ t, imageInfo, cursor, onMouseDown, onOpenFile, onError, canvasRef, viewportRef, clearError, offset, zoom, activeTool, zoomMode, zoomToArea, zoomOutFromArea, onZoomChange, zoomIn, zoomOut, fitToScreen, zoomTo100 }) {
   const [isDragging, setIsDragging] = useState(false);
   const [selection, setSelection] = useState(null);
   const selectionStartRef = useRef(null);
@@ -70,11 +72,18 @@ export default function Viewport({ t, imageInfo, cursor, onMouseDown, onOpenFile
     setSelection(null);
     e.currentTarget.releasePointerCapture?.(e.pointerId);
     if (width > 10 && height > 10) {
-      zoomToArea?.({ x: x1, y: y1, width, height });
+      if (zoomMode === 'out') {
+        zoomOutFromArea?.({ x: x1, y: y1, width, height });
+      } else {
+        zoomToArea?.({ x: x1, y: y1, width, height });
+      }
     }
   };
 
   const handlePointerDown = (e) => {
+    if (e.target.closest('.zoom-overlay')) {
+      return;
+    }
     if (e.button === 0 && activeTool === 'zoom' && imageInfo) {
       e.preventDefault();
       startSelection(e);
@@ -120,6 +129,18 @@ export default function Viewport({ t, imageInfo, cursor, onMouseDown, onOpenFile
           style={{ left: selection.x, top: selection.y, width: selection.width, height: selection.height }}
         />
       )}
+
+      <div className="zoom-overlay">
+        <div className="zoom-overlay__row">
+          <button className="tbtn tbtn--icon" title={t('toolbar.zoomOutTitle')} onClick={zoomOut} disabled={!imageInfo}><IconZoomOut /></button>
+          <ZoomSelect zoom={zoom} onChange={onZoomChange} />
+          <button className="tbtn tbtn--icon" title={t('toolbar.zoomInTitle')} onClick={zoomIn} disabled={!imageInfo}><IconZoomIn /></button>
+        </div>
+        <div className="zoom-overlay__row">
+          <button className="tbtn" title={t('toolbar.fitTitle')} onClick={fitToScreen} disabled={!imageInfo}>{t('toolbar.fit')}</button>
+          <button className="tbtn" title={t('toolbar.actualTitle')} onClick={zoomTo100} disabled={!imageInfo}>{t('toolbar.actual')}</button>
+        </div>
+      </div>
 
       <div className="scene"
         style={{

@@ -44,3 +44,8 @@ export function fitZoom(vpW, vpH, imgW, imgH) {
   const pad = 48;
   return clamp(Math.min((vpW - pad) / imgW, (vpH - pad) / imgH), MIN_ZOOM, MAX_ZOOM);
 }
+
+// Рассчитывает масштаб, при котором изображение заполняет весь viewport
+export function fillZoom(vpW, vpH, imgW, imgH) {
+  return clamp(Math.max(vpW / imgW, vpH / imgH), MIN_ZOOM, MAX_ZOOM);
+}

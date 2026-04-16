@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
-import { zoomToward, centerOffset, fitZoom, ZOOM_FACTOR } from '../utils/zoom';
+import { zoomToward, centerOffset, fitZoom, fillZoom, clamp, ZOOM_FACTOR } from '../utils/zoom';
 
 // Хук для управления масштабом, смещением и инструментами просмотра
 export default function useViewportControls(imageInfo, viewportRef) {
@@ -17,6 +17,14 @@ export default function useViewportControls(imageInfo, viewportRef) {
     if (!imageInfo || !viewportRef.current) return;
     const vp = viewportRef.current;
     const z = fitZoom(vp.clientWidth, vp.clientHeight, imageInfo.width, imageInfo.height);
+    setZoom(z);
+    setOffset(centerOffset(vp.clientWidth, vp.clientHeight, imageInfo.width, imageInfo.height, z));
+  }, [imageInfo, viewportRef]);
+
+  const fillToScreen = useCallback(() => {
+    if (!imageInfo || !viewportRef.current) return;
+    const vp = viewportRef.current;
+    const z = fillZoom(vp.clientWidth, vp.clientHeight, imageInfo.width, imageInfo.height);
     setZoom(z);
     setOffset(centerOffset(vp.clientWidth, vp.clientHeight, imageInfo.width, imageInfo.height, z));
   }, [imageInfo, viewportRef]);
@@ -93,6 +101,28 @@ export default function useViewportControls(imageInfo, viewportRef) {
     });
   }, [imageInfo, viewportRef]);
 
+  const zoomOutFromArea = useCallback((selection) => {
+    if (!imageInfo || !viewportRef.current) return;
+    const vp = viewportRef.current;
+    const x1 = selection.x;
+    const y1 = selection.y;
+    const x2 = selection.x + selection.width;
+    const y2 = selection.y + selection.height;
+
+    const centerX = (x1 + x2) / 2;
+    const centerY = (y1 + y2) / 2;
+    const imgCenterX = (centerX - offsetRef.current.x) / zoomRef.current;
+    const imgCenterY = (centerY - offsetRef.current.y) / zoomRef.current;
+    const factor = Math.min(selection.width / vp.clientWidth, selection.height / vp.clientHeight, 1);
+    const nextZoom = clamp(zoomRef.current * factor);
+
+    setZoom(nextZoom);
+    setOffset({
+      x: vp.clientWidth / 2 - nextZoom * imgCenterX,
+      y: vp.clientHeight / 2 - nextZoom * imgCenterY,
+    });
+  }, [imageInfo, viewportRef]);
+
   // Применяет произвольный уровень масштабирования и центрирует изображение
   const handleZoomChange = useCallback((z) => {
     if (!imageInfo || !viewportRef.current) return;
@@ -127,11 +157,13 @@ export default function useViewportControls(imageInfo, viewportRef) {
     setActiveTool,
     cursor,
     fitToScreen,
+    fillToScreen,
     zoomTo100,
     zoomIn,
     zoomOut,
     zoomPreset,
     zoomToArea,
+    zoomOutFromArea,
     handleZoomChange,
     onMouseDown,
   };
