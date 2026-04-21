@@ -6,7 +6,7 @@ import ZoomSelect from '../controls/ZoomSelect';
 const SUPPORTED_EXTENSIONS = ['.png', '.jpg', '.jpeg', '.gb7'];
 
 // Просмотр изображения с drag/drop и отображением холста
-export default function Viewport({ t, imageInfo, cursor, onMouseDown, onOpenFile, onError, canvasRef, viewportRef, clearError, offset, zoom, activeTool, zoomMode, zoomToArea, zoomOutFromArea, onZoomChange, zoomIn, zoomOut, fitToScreen, zoomTo100 }) {
+export default function Viewport({ t, imageInfo, cursor, onMouseDown, onOpenFile, onError, canvasRef, viewportRef, offset, zoom, activeTool, zoomMode, zoomToArea, zoomOutFromArea, onZoomChange, zoomIn, zoomOut, fitToScreen, zoomTo100 }) {
   const [isDragging, setIsDragging] = useState(false);
   const [selection, setSelection] = useState(null);
   const selectionStartRef = useRef(null);

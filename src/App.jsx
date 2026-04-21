@@ -28,9 +28,11 @@ import Toolbar from './components/controls/Toolbar';
 import ToolsPanel from './components/controls/ToolsPanel';
 import Viewport from './components/view/Viewport';
 import InfoPanel from './components/layout/InfoPanel';
+import ChannelsPanel from './components/layout/ChannelsPanel';
 import StatusBar from './components/layout/StatusBar';
 import ErrorBanner from './components/ui/ErrorBanner';
 import ThemeSettings from './components/ui/ThemeSettings';
+import { rgbToLab } from './utils/color';
 
 // Корневой компонент приложения, собирает хуки и визуальные блоки
 export default function App() {
@@ -41,6 +43,9 @@ export default function App() {
   const viewportRef = useRef(null);
 
   const [imageInfo, setImageInfo] = useState(null);
+  const [originalImageData, setOriginalImageData] = useState(null);
+  const [channels, setChannels] = useState({});
+  const [eyedropper, setEyedropper] = useState(null);
   const [accentColor, setAccentColor] = useState(() => localStorage.getItem('accentColor') || '#5B8CFF');
   const [themeMode, setThemeMode] = useState(() => localStorage.getItem('themeMode') || 'dark');
   const [showThemeSettings, setShowThemeSettings] = useState(false);
@@ -59,6 +64,61 @@ export default function App() {
 
   const { handleFile, saveAs } = useImageManager({ canvasRef, drawImageData, setImageInfo, setError, t });
   const fileInputRef = useRef(null);
+
+  // When a new image is loaded, capture immutable original pixel data and initialize channels
+  useEffect(() => {
+    if (!imageInfo || !canvasRef.current) return;
+    const c = canvasRef.current;
+    const ctx = c.getContext('2d');
+    try {
+      const d = ctx.getImageData(0, 0, c.width, c.height);
+      // keep a copy
+      const copy = new ImageData(new Uint8ClampedArray(d.data), d.width, d.height);
+      setOriginalImageData(copy);
+      const isGray = (imageInfo.depth || '').toLowerCase().includes('gray');
+      const hasAlpha = (imageInfo.depth || '').toLowerCase().includes('alpha') || (imageInfo.depth || '').toLowerCase().includes('rgba');
+      if (isGray) {
+        setChannels({ Gray: true, A: !!hasAlpha });
+      } else {
+        setChannels({ R: true, G: true, B: true, A: !!hasAlpha });
+      }
+      setEyedropper(null);
+    } catch (err) {
+      console.warn('Failed to capture original image data', err);
+    }
+  }, [imageInfo]);
+
+  // Apply channel toggles by composing a new ImageData from original
+  useEffect(() => {
+    if (!originalImageData || !canvasRef.current) return;
+    const c = canvasRef.current;
+    const ctx = c.getContext('2d');
+    const w = originalImageData.width, h = originalImageData.height;
+    const src = originalImageData.data;
+    const out = new Uint8ClampedArray(src.length);
+    const isGray = (imageInfo?.depth || '').toLowerCase().includes('gray');
+    const showR = !!channels.R; const showG = !!channels.G; const showB = !!channels.B; const showGray = !!channels.Gray; const showA = !!channels.A;
+
+    for (let i = 0; i < src.length; i += 4) {
+      const r = src[i], g = src[i + 1], b = src[i + 2], a = src[i + 3];
+      let nr = 0, ng = 0, nb = 0, na = 255;
+      if (isGray) {
+        if (showGray) nr = ng = nb = r;
+        if (showA && !showGray) nr = ng = nb = a;
+      } else {
+        nr = showR ? r : 0;
+        ng = showG ? g : 0;
+        nb = showB ? b : 0;
+        if (!showR && !showG && !showB && showA) {
+          // only alpha visible -> show mask
+          nr = ng = nb = a;
+        }
+      }
+      na = showA ? a : 255;
+      out[i] = nr; out[i + 1] = ng; out[i + 2] = nb; out[i + 3] = na;
+    }
+    ctx.putImageData(new ImageData(out, w, h), 0, 0);
+  }, [imageInfo, originalImageData, channels]);
 
   const accentSoft = useMemo(() => lightenColor(accentColor, 0.6), [accentColor]);
   const accentBg = useMemo(() => {
@@ -83,6 +143,7 @@ export default function App() {
     onActualSize: zoomTo100,
     onZoomTool: () => setActiveTool('zoom'),
     onHandTool: () => setActiveTool('hand'),
+    onEyedropperTool: () => setActiveTool('eyedropper'),
   }), [zoomIn, zoomOut, fitToScreen, zoomTo100, setActiveTool]);
 
   useHotkeys(hotkeys);
@@ -129,9 +190,9 @@ export default function App() {
     settings: [
       { label: t('menu.themeSettings'), actionKey: 'showThemeSettings', shortcut: 'Ctrl+Shift+C' },
     ],
-  }), [t, imageInfo, handleFile, saveAs, zoomIn, zoomOut, fitToScreen, zoomTo100, handleZoomChange, language, setLanguage, themeMode]);
+  }), [t, imageInfo, handleFile, saveAs, zoomIn, zoomOut, fitToScreen, zoomTo100, handleZoomChange, setLanguage, themeMode]);
 
-  const activeToolLabel = activeTool === 'hand' ? t('info.hand') : t('info.zoomTool');
+  const activeToolLabel = activeTool === 'hand' ? t('info.hand') : activeTool === 'eyedropper' ? t('info.eyedropper') || 'Eyedropper' : t('info.zoomTool');
 
   return (
     <div className={`app theme-${themeMode}`} style={{
@@ -181,7 +242,31 @@ export default function App() {
           zoomMode={zoomMode}
           zoomToArea={zoomToArea}
           zoomOutFromArea={zoomOutFromArea}
-          onMouseDown={onMouseDown}
+          onMouseDown={(e) => {
+            // keep panning behavior
+            onMouseDown?.(e);
+            // Eyedropper handling: left click
+            if (e.button === 0 && activeTool === 'eyedropper' && imageInfo && canvasRef.current) {
+              try {
+                const vp = viewportRef.current;
+                const rect = vp.getBoundingClientRect();
+                const px = e.clientX - rect.left;
+                const py = e.clientY - rect.top;
+                const imgX = Math.floor((px - offset.x) / zoom);
+                const imgY = Math.floor((py - offset.y) / zoom);
+                const c = canvasRef.current;
+                const ctx = c.getContext('2d');
+                if (imgX >= 0 && imgY >= 0 && imgX < c.width && imgY < c.height) {
+                  const d = ctx.getImageData(imgX, imgY, 1, 1).data;
+                  const r = d[0], g = d[1], b = d[2];
+                  const lab = rgbToLab(r, g, b);
+                  setEyedropper({ x: imgX, y: imgY, r, g, b, a: d[3], lab });
+                }
+              } catch (err) {
+                console.warn('Eyedropper failed', err);
+              }
+            }
+          }}
           onOpenFile={handleFile}
           onError={setError}
           canvasRef={canvasRef}
@@ -197,7 +282,10 @@ export default function App() {
         />
 
         {/* Правая панель информации */}
-        <InfoPanel t={t} imageInfo={imageInfo} zoom={formatZoom(zoom)} activeToolLabel={activeToolLabel} />
+        <div className="right-panel">
+          <InfoPanel t={t} imageInfo={imageInfo} zoom={formatZoom(zoom)} activeToolLabel={activeToolLabel} eyedropper={eyedropper} />
+          <ChannelsPanel imageInfo={imageInfo} originalImageData={originalImageData} channels={channels} setChannels={setChannels} />
+        </div>
       </div>
 
       {/* Строка состояния */}

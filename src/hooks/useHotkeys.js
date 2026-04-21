@@ -44,6 +44,10 @@ export default function useHotkeys(actions) {
           e.preventDefault();
           actions.onHandTool?.();
         }
+        if (key === 'i') {
+          e.preventDefault();
+          actions.onEyedropperTool?.();
+        }
       }
     };
 
