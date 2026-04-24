@@ -32,6 +32,7 @@ import ChannelsPanel from './components/layout/ChannelsPanel';
 import StatusBar from './components/layout/StatusBar';
 import ErrorBanner from './components/ui/ErrorBanner';
 import ThemeSettings from './components/ui/ThemeSettings';
+import LevelsDialog from './components/dialogs/LevelsDialog';
 import { rgbToLab } from './utils/color';
 
 // Корневой компонент приложения, собирает хуки и визуальные блоки
@@ -48,6 +49,8 @@ export default function App() {
   const [eyedropper, setEyedropper] = useState(null);
   const [accentColor, setAccentColor] = useState(() => localStorage.getItem('accentColor') || '#5B8CFF');
   const [themeMode, setThemeMode] = useState(() => localStorage.getItem('themeMode') || 'dark');
+  const [showLevels, setShowLevels] = useState(false);
+  const [levelsOriginalImageData, setLevelsOriginalImageData] = useState(null);
   const [showThemeSettings, setShowThemeSettings] = useState(false);
   const { error, setError, clearError } = useErrorState();
 
@@ -144,7 +147,11 @@ export default function App() {
     onZoomTool: () => setActiveTool('zoom'),
     onHandTool: () => setActiveTool('hand'),
     onEyedropperTool: () => setActiveTool('eyedropper'),
-  }), [zoomIn, zoomOut, fitToScreen, zoomTo100, setActiveTool]);
+    onShowLevels: () => {
+      setLevelsOriginalImageData(originalImageData ? new ImageData(new Uint8ClampedArray(originalImageData.data), originalImageData.width, originalImageData.height) : null);
+      setShowLevels(true);
+    },
+  }), [zoomIn, zoomOut, fitToScreen, zoomTo100, setActiveTool, originalImageData]);
 
   useHotkeys(hotkeys);
 
@@ -166,6 +173,10 @@ export default function App() {
       zoomPreset: handleZoomChange,
       setLanguage,
       showThemeSettings: () => setShowThemeSettings(true),
+      showLevels: () => {
+        setLevelsOriginalImageData(originalImageData ? new ImageData(new Uint8ClampedArray(originalImageData.data), originalImageData.width, originalImageData.height) : null);
+        setShowLevels(true);
+      },
       themeLight: () => setThemeMode('light'),
       themeDark: () => setThemeMode('dark'),
       languageEnglish: () => setLanguage('en'),
@@ -186,11 +197,13 @@ export default function App() {
       { label: t('menu.actualSize'), disabled: !imageInfo, actionKey: 'actualSize', shortcut: 'Ctrl+1' },
       '---',
       ...[25, 50, 100, 200, 400].map(v => ({ label: `${v}%`, disabled: !imageInfo, action: () => handleZoomChange(v / 100) })),
+      '---',
+      { label: t('levels.title'), disabled: !imageInfo, actionKey: 'showLevels', shortcut: 'Ctrl+L' },
     ],
     settings: [
       { label: t('menu.themeSettings'), actionKey: 'showThemeSettings', shortcut: 'Ctrl+Shift+C' },
     ],
-  }), [t, imageInfo, handleFile, saveAs, zoomIn, zoomOut, fitToScreen, zoomTo100, handleZoomChange, setLanguage, themeMode]);
+  }), [t, imageInfo, handleFile, saveAs, zoomIn, zoomOut, fitToScreen, zoomTo100, handleZoomChange, setLanguage, themeMode, originalImageData]);
 
   const activeToolLabel = activeTool === 'hand' ? t('info.hand') : activeTool === 'eyedropper' ? t('info.eyedropper') || 'Eyedropper' : t('info.zoomTool');
 
@@ -213,6 +226,22 @@ export default function App() {
           onThemeModeChange={setThemeMode}
           onAccentColorChange={setAccentColor}
           onLanguageChange={setLanguage}
+        />
+      )}
+      {showLevels && (
+        <LevelsDialog
+          t={t}
+          originalImageData={levelsOriginalImageData}
+          imageInfo={imageInfo}
+          canvasRef={canvasRef}
+          onClose={() => setShowLevels(false)}
+          onApply={(newImageData) => {
+            if (originalImageData) {
+              // Update original for next operation
+              const ctx = canvasRef.current.getContext('2d');
+              ctx.putImageData(newImageData, 0, 0);
+            }
+          }}
         />
       )}
       <ErrorBanner t={t} error={error} onClose={clearError} />
@@ -284,7 +313,7 @@ export default function App() {
         {/* Правая панель информации */}
         <div className="right-panel">
           <InfoPanel t={t} imageInfo={imageInfo} zoom={formatZoom(zoom)} activeToolLabel={activeToolLabel} eyedropper={eyedropper} />
-          <ChannelsPanel imageInfo={imageInfo} originalImageData={originalImageData} channels={channels} setChannels={setChannels} />
+          <ChannelsPanel t={t} imageInfo={imageInfo} originalImageData={originalImageData} channels={channels} setChannels={setChannels} />
         </div>
       </div>
 

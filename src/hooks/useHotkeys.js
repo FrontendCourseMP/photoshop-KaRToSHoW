@@ -35,6 +35,10 @@ export default function useHotkeys(actions) {
           e.preventDefault();
           actions.onFitScreen?.();
         }
+        if (key === 'l') {
+          e.preventDefault();
+          actions.onShowLevels?.();
+        }
       } else if (!e.altKey && !e.metaKey) {
         if (key === 'z') {
           e.preventDefault();

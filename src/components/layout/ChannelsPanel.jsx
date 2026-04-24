@@ -21,7 +21,7 @@ function makeThumbFromImageData(orig, width, height, thumbW, thumbH, channel) {
   return new ImageData(out, thumbW, thumbH);
 }
 
-export default function ChannelsPanel({ imageInfo, originalImageData, channels, setChannels }) {
+export default function ChannelsPanel({ t, imageInfo, originalImageData, channels, setChannels }) {
   const rRef   = useRef(null);
   const gRef   = useRef(null);
   const bRef   = useRef(null);
@@ -56,8 +56,8 @@ export default function ChannelsPanel({ imageInfo, originalImageData, channels, 
   if (!imageInfo || !originalImageData) return (
     <aside className="channels-panel">
       <div className="info-section">
-        <h3 className="info-section__title">Channels</h3>
-        <p className="info-empty">No image loaded</p>
+        <h3 className="info-section__title">{t ? t('channels.title') : 'Channels'}</h3>
+        <p className="info-empty">{t ? t('channels.noImage') : 'No image loaded'}</p>
       </div>
     </aside>
   );
@@ -68,12 +68,18 @@ export default function ChannelsPanel({ imageInfo, originalImageData, channels, 
   if (hasAlpha) items.push('A');
 
   const refMap  = { R: rRef, G: gRef, B: bRef, A: aRef, Gray: grayRef };
-  const labelMap = { R: 'Red', G: 'Green', B: 'Blue', A: 'Alpha', Gray: 'Grayscale' };
+  const labelMap = {
+    R: t ? t('channels.red') : 'Red',
+    G: t ? t('channels.green') : 'Green',
+    B: t ? t('channels.blue') : 'Blue',
+    A: t ? t('channels.alpha') : 'Alpha',
+    Gray: t ? t('channels.grayscale') : 'Grayscale',
+  };
 
   return (
     <aside className="channels-panel">
       <div className="info-section">
-        <h3 className="info-section__title">Channels</h3>
+        <h3 className="info-section__title">{t ? t('channels.title') : 'Channels'}</h3>
         <div className="channels-list">
           {items.map((ch) => (
             <label
@@ -90,7 +96,7 @@ export default function ChannelsPanel({ imageInfo, originalImageData, channels, 
               <canvas ref={refMap[ch]} className="channel-thumb" />
               <div className="channel-meta">
                 <div className="channel-name">{labelMap[ch]}</div>
-                <div className="channel-badge">active</div>
+                <div className="channel-badge">{t ? t('channels.active') : 'active'}</div>
               </div>
             </label>
           ))}
