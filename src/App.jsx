@@ -197,8 +197,6 @@ export default function App() {
       { label: t('menu.actualSize'), disabled: !imageInfo, actionKey: 'actualSize', shortcut: 'Ctrl+1' },
       '---',
       ...[25, 50, 100, 200, 400].map(v => ({ label: `${v}%`, disabled: !imageInfo, action: () => handleZoomChange(v / 100) })),
-      '---',
-      { label: t('levels.title'), disabled: !imageInfo, actionKey: 'showLevels', shortcut: 'Ctrl+L' },
     ],
     settings: [
       { label: t('menu.themeSettings'), actionKey: 'showThemeSettings', shortcut: 'Ctrl+Shift+C' },
@@ -236,11 +234,12 @@ export default function App() {
           canvasRef={canvasRef}
           onClose={() => setShowLevels(false)}
           onApply={(newImageData) => {
-            if (originalImageData) {
-              // Update original for next operation
-              const ctx = canvasRef.current.getContext('2d');
-              ctx.putImageData(newImageData, 0, 0);
-            }
+            // Persist applied result as new baseline for future edits
+            setOriginalImageData(new ImageData(
+              new Uint8ClampedArray(newImageData.data),
+              newImageData.width,
+              newImageData.height,
+            ));
           }}
         />
       )}
@@ -314,6 +313,26 @@ export default function App() {
         <div className="right-panel">
           <InfoPanel t={t} imageInfo={imageInfo} zoom={formatZoom(zoom)} activeToolLabel={activeToolLabel} eyedropper={eyedropper} />
           <ChannelsPanel t={t} imageInfo={imageInfo} originalImageData={originalImageData} channels={channels} setChannels={setChannels} />
+
+          {/* Levels trigger */}
+          <div className="info-section levels-trigger">
+            <h3 className="info-section__title">
+              {t('levels.title')}
+              <span className="levels-trigger__kbd" style={{ marginLeft: 'auto' }}>Ctrl+L</span>
+            </h3>
+            <button
+              className="levels-trigger__btn"
+              disabled={!imageInfo}
+              onClick={() => {
+                setLevelsOriginalImageData(originalImageData
+                  ? new ImageData(new Uint8ClampedArray(originalImageData.data), originalImageData.width, originalImageData.height)
+                  : null);
+                setShowLevels(true);
+              }}
+            >
+              {t('levels.open')}
+            </button>
+          </div>
         </div>
       </div>
 
