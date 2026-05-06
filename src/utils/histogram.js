@@ -1,9 +1,9 @@
 /**
- * Luminance calculation for composite histogram
- * Uses standard relative luminance formula
+ * Расчет яркости для составной гистограммы
+ * Использует стандартную формулу относительной яркости
  */
 export function getLuminance(r, g, b) {
-  // sRGB relative luminance
+  // Относительная яркость sRGB
   const rs = r / 255;
   const gs = g / 255;
   const bs = b / 255;
@@ -16,10 +16,10 @@ export function getLuminance(r, g, b) {
 }
 
 /**
- * Build histogram for given channel
- * @param {ImageData} imageData - source image data
+ * Построить гистограмму для заданного канала
+ * @param {ImageData} imageData - исходные данные изображения
  * @param {string} channel - 'luminance', 'R', 'G', 'B', 'A'
- * @returns {Uint32Array} histogram array [0..255]
+ * @returns {Uint32Array} массив гистограмм [0..255]
  */
 export function buildHistogram(imageData, channel = 'luminance') {
   const data = imageData.data;
@@ -43,7 +43,7 @@ export function buildHistogram(imageData, channel = 'luminance') {
     } else if (channel === 'A') {
       value = a;
     } else {
-      value = Math.round((r + g + b) / 3); // fallback to average
+      value = Math.round((r + g + b) / 3); // резервный вариант - среднее значение
     }
     
     hist[Math.min(255, Math.max(0, value))]++;
@@ -53,24 +53,24 @@ export function buildHistogram(imageData, channel = 'luminance') {
 }
 
 /**
- * Normalize histogram for display (linear or logarithmic)
- * @param {Uint32Array} histogram - raw histogram
- * @param {string} scale - 'linear' or 'log'
- * @returns {Float32Array} normalized values [0..1]
+ * Нормализовать гистограмму для отображения (линейная или логарифмическая)
+ * @param {Uint32Array} histogram - сырая гистограмма
+ * @param {string} scale - 'linear' или 'log'
+ * @returns {Float32Array} нормализованные значения [0..1]
  */
 export function normalizeHistogram(histogram, scale = 'linear') {
   const normalized = new Float32Array(256);
   
   let maxValue = 0;
   if (scale === 'log') {
-    // Log scale: find max of log-transformed values
+    // Логарифмическая шкала: найти максимум логарифмически преобразованных значений
     for (let i = 0; i < 256; i++) {
       if (histogram[i] > 0) {
         maxValue = Math.max(maxValue, Math.log1p(histogram[i]));
       }
     }
   } else {
-    // Linear scale: find max directly
+    // Линейная шкала: найти максимум напрямую
     maxValue = Math.max(...histogram);
   }
   

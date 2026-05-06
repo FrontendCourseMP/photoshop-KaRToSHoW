@@ -86,6 +86,9 @@ export default function LevelsDialog({ t, originalImageData, canvasRef, onClose,
   const currentLevelRef   = useRef(levels[activeChannel]);
   const activeChannelRef  = useRef(activeChannel);
   const levelsRef         = useRef(levels);
+  const dragStartRef      = useRef(null);
+  const draggingDialogRef = useRef(false);
+  const [dialogOffset, setDialogOffset] = useState({ x: 0, y: 0 });
 
   useEffect(() => { currentLevelRef.current  = levels[activeChannel]; }, [levels, activeChannel]);
   useEffect(() => { activeChannelRef.current = activeChannel;          }, [activeChannel]);
@@ -273,6 +276,17 @@ export default function LevelsDialog({ t, originalImageData, canvasRef, onClose,
   }, []);
 
   // ── Histogram drag (black / gamma / white) ─────────────────────────────────
+  const handleDialogMouseDown = useCallback((e) => {
+    if (e.button !== 0) return;
+    draggingDialogRef.current = true;
+    dragStartRef.current = {
+      startX: e.clientX,
+      startY: e.clientY,
+      startOffset: dialogOffset,
+    };
+    e.preventDefault();
+  }, [dialogOffset]);
+
   const handleHistMouseDown = useCallback((e) => {
     if (!histCanvasRef.current) return;
     const rect = histCanvasRef.current.getBoundingClientRect();
@@ -351,10 +365,10 @@ export default function LevelsDialog({ t, originalImageData, canvasRef, onClose,
     setIsDirty(false);
   };
 
-  const handleCancel = () => {
+  const handleCancel = useCallback(() => {
     restoreOriginal();
     onClose();
-  };
+  }, [restoreOriginal, onClose]);
 
   const handleApply = () => {
     if (originalImageData && canvasRef.current) {
@@ -366,6 +380,40 @@ export default function LevelsDialog({ t, originalImageData, canvasRef, onClose,
     }
     onClose();
   };
+
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      if (e.key === 'Escape') {
+        handleCancel();
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [handleCancel]);
+
+  useEffect(() => {
+    const onMove = (e) => {
+      if (!draggingDialogRef.current || !dragStartRef.current) return;
+      const dx = e.clientX - dragStartRef.current.startX;
+      const dy = e.clientY - dragStartRef.current.startY;
+      setDialogOffset({
+        x: dragStartRef.current.startOffset.x + dx,
+        y: dragStartRef.current.startOffset.y + dy,
+      });
+    };
+
+    const onUp = () => {
+      draggingDialogRef.current = false;
+      dragStartRef.current = null;
+    };
+
+    document.addEventListener('mousemove', onMove);
+    document.addEventListener('mouseup', onUp);
+    return () => {
+      document.removeEventListener('mousemove', onMove);
+      document.removeEventListener('mouseup', onUp);
+    };
+  }, []);
 
   if (!originalImageData) {
     return (
@@ -381,10 +429,13 @@ export default function LevelsDialog({ t, originalImageData, canvasRef, onClose,
 
   return (
     <dialog className="dialog dialog--levels" open>
-      <div className="dialog__content">
+      <div
+        className="dialog__content"
+        style={{ transform: `translate(${dialogOffset.x}px, ${dialogOffset.y}px)` }}
+      >
 
         {/* ── Header ── */}
-        <div className="dialog__header">
+        <div className="dialog__header" onMouseDown={handleDialogMouseDown}>
           <h2>{t('levels.title')}</h2>
           {isDirty && <span className="levels__dirty-badge" title="Unsaved changes">●</span>}
         </div>

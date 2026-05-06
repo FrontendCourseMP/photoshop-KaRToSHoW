@@ -135,17 +135,23 @@ export default function useViewportControls(imageInfo, viewportRef) {
     const isPan = e.button === 1 || activeTool === 'hand';
     if (!isPan) return;
     e.preventDefault();
+
     const ox = offsetRef.current.x;
     const oy = offsetRef.current.y;
     const sx = e.clientX;
     const sy = e.clientY;
-    const onMove = (ev) => setOffset({ x: ox + ev.clientX - sx, y: oy + ev.clientY - sy });
-    const onUp = () => {
-      window.removeEventListener('mousemove', onMove);
-      window.removeEventListener('mouseup', onUp);
+
+    const onMove = (ev) => {
+      setOffset({ x: ox + ev.clientX - sx, y: oy + ev.clientY - sy });
     };
-    window.addEventListener('mousemove', onMove);
-    window.addEventListener('mouseup', onUp);
+
+    const onUp = () => {
+      window.removeEventListener('pointermove', onMove);
+      window.removeEventListener('pointerup', onUp);
+    };
+
+    window.addEventListener('pointermove', onMove);
+    window.addEventListener('pointerup', onUp);
   }, [activeTool]);
 
   const cursor = activeTool === 'hand' ? 'grab' : 'crosshair';

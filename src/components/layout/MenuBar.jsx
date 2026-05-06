@@ -39,8 +39,6 @@ export default function MenuBar({ menuConfig, fileInputRef }) {
       </span>
       <Menu label={fileLabel} items={resolvedFileItems} />
       <Menu label={viewLabel} items={resolvedViewItems} />
-      <span className="menubar__ghost">Image</span>
-      <span className="menubar__ghost">Filter</span>
       {settingsAction ? (
         <button className="menu__trigger" type="button" onClick={settingsAction}>
           {settingsLabel}
@@ -48,7 +46,6 @@ export default function MenuBar({ menuConfig, fileInputRef }) {
       ) : (
         <Menu label={settingsLabel} items={resolvedSettingsItems} />
       )}
-      <span className="menubar__ghost">Help</span>
       <input
         ref={fileRef}
         type="file"

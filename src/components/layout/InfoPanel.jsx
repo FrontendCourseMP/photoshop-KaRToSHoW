@@ -5,6 +5,16 @@ export default function InfoPanel({ t, imageInfo, zoom, activeToolLabel, eyedrop
 
   const hasColor = eyedropper && eyedropper.r != null;
 
+  // Копирование HEX в буфер обмена
+  const copyHex = async (hex) => {
+    try {
+      await navigator.clipboard.writeText(hex);
+      // Можно добавить уведомление, но пока просто копируем
+    } catch (err) {
+      console.warn('Failed to copy HEX', err);
+    }
+  };
+
   return (
     <aside className="info-panel">
       <section className="info-section">
@@ -55,7 +65,13 @@ export default function InfoPanel({ t, imageInfo, zoom, activeToolLabel, eyedrop
                 />
                 <div className="eyedropper-swatch__overlay" />
                 <div className="eyedropper-swatch__meta">
-                  <span className="eyedropper-swatch__hex">{hex}</span>
+                  <span 
+                    className="eyedropper-swatch__hex"
+                    onClick={() => copyHex(hex)}
+                    title={t('info.copyHex') || 'Copy HEX'}
+                  >
+                    {hex}
+                  </span>
                   <span className="eyedropper-swatch__coords">{x}, {y}</span>
                 </div>
               </div>

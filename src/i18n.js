@@ -1,8 +1,8 @@
 import i18n from 'i18next'
 import { initReactI18next } from 'react-i18next'
 
-// Выбираем язык из localStorage или по умолчанию английский
-const language = localStorage.getItem('language') || 'en'
+// Выбираем язык из localStorage или по умолчанию русский
+const language = localStorage.getItem('language') || 'ru'
 // Переводы для английского и русского интерфейсов
 const resources = {
   en: {
@@ -50,6 +50,7 @@ const resources = {
         image: 'Image',
         eyedropper: 'Eyedropper',
         eyedropperEmpty: 'Select Eyedropper and click on image',
+        copyHex: 'Copy HEX',
         width: 'Width',
         height: 'Height',
         depth: 'Depth',
@@ -156,6 +157,7 @@ const resources = {
         image: 'Изображение',
         eyedropper: 'Пипетка',
         eyedropperEmpty: 'Выберите пипетку и кликните по изображению',
+        copyHex: 'Копировать HEX',
         width: 'Ширина',
         height: 'Высота',
         depth: 'Глубина',

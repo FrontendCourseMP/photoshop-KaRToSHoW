@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 
 // Хук для переключения языка и сохранения выбора в localStorage
 export default function useLanguage(i18n) {
-  const [language, setLanguage] = useState(localStorage.getItem('language') || i18n.resolvedLanguage || 'en');
+  const [language, setLanguage] = useState(localStorage.getItem('language') || i18n.resolvedLanguage || 'ru');
 
   useEffect(() => {
     i18n.changeLanguage(language);

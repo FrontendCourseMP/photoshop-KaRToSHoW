@@ -80,30 +80,33 @@ export default function Viewport({ t, imageInfo, cursor, onMouseDown, onOpenFile
     }
   };
 
-  const handlePointerDown = (e) => {
-    if (e.target.closest('.zoom-overlay')) {
-      return;
-    }
-    if (e.button === 0 && activeTool === 'zoom' && imageInfo) {
-      e.preventDefault();
-      startSelection(e);
-    }
-    onMouseDown?.(e);
-  };
+const handlePointerDown = (e) => {
+  if (e.target.closest('.zoom-overlay')) return;
 
-  return (
-    <div
-      className={`viewport${isDragging ? ' viewport--drag' : ''}`}
-      ref={viewportRef}
-      style={{ cursor }}
-      onPointerDown={handlePointerDown}
-      onPointerMove={updateSelection}
-      onPointerUp={finishSelection}
-      onPointerCancel={finishSelection}
-      onDrop={handleDrop}
-      onDragOver={handleDragOver}
-      onDragLeave={handleDragLeave}
-    >
+  if (e.button === 0 && activeTool === 'zoom' && imageInfo) {
+    e.preventDefault();
+    startSelection(e);
+  } else if (e.button === 0 && activeTool === 'hand') {
+    // Предотвращаем нативный drag браузера при панорамировании
+    e.preventDefault();
+  }
+
+  onMouseDown?.(e);
+};
+
+return (
+  <div
+    className={`viewport${isDragging ? ' viewport--drag' : ''}`}
+    ref={viewportRef}
+    style={{ cursor }}
+    onPointerDown={handlePointerDown}
+    onPointerMove={(e) => { if (activeTool === 'zoom') updateSelection(e); }}
+    onPointerUp={(e) => { if (activeTool === 'zoom') finishSelection(e); }}
+    onPointerCancel={(e) => { if (activeTool === 'zoom') finishSelection(e); }}
+    onDrop={handleDrop}
+    onDragOver={handleDragOver}
+    onDragLeave={handleDragLeave}
+  >
       {isDragging && (
         <div className="drop-overlay">{t('empty.drop')}</div>
       )}

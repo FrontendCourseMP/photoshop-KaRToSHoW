@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 
 export default function ThemeSettings({
   t,
@@ -11,6 +11,14 @@ export default function ThemeSettings({
   onLanguageChange,
 }) {
   const [themeTab, setThemeTab] = useState('theme');
+
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      if (e.key === 'Escape') onClose();
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [onClose]);
 
   return (
     <div className="theme-modal-overlay" onClick={onClose}>
