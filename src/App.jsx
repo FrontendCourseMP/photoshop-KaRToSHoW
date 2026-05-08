@@ -68,7 +68,6 @@ export default function App() {
   const { handleFile, saveAs } = useImageManager({ canvasRef, drawImageData, setImageInfo, setError, t });
   const fileInputRef = useRef(null);
 
-  // When a new image is loaded, capture immutable original pixel data and initialize channels
   useEffect(() => {
     if (!imageInfo || !canvasRef.current) return;
     const c = canvasRef.current;
@@ -87,11 +86,10 @@ export default function App() {
       }
       setEyedropper(null);
     } catch (err) {
-      console.warn('Failed to capture original image data', err);
+      console.warn('Не удалось захватить исходные данные изображения', err);
     }
   }, [imageInfo]);
 
-  // Apply channel toggles by composing a new ImageData from original
   useEffect(() => {
     if (!originalImageData || !canvasRef.current) return;
     const c = canvasRef.current;
@@ -100,7 +98,11 @@ export default function App() {
     const src = originalImageData.data;
     const out = new Uint8ClampedArray(src.length);
     const isGray = (imageInfo?.depth || '').toLowerCase().includes('gray');
-    const showR = !!channels.R; const showG = !!channels.G; const showB = !!channels.B; const showGray = !!channels.Gray; const showA = !!channels.A;
+    const showR = !!channels.R;
+    const showG = !!channels.G;
+    const showB = !!channels.B;
+    const showGray = !!channels.Gray;
+    const showA = !!channels.A;
 
     for (let i = 0; i < src.length; i += 4) {
       const r = src[i], g = src[i + 1], b = src[i + 2], a = src[i + 3];
@@ -113,7 +115,6 @@ export default function App() {
         ng = showG ? g : 0;
         nb = showB ? b : 0;
         if (!showR && !showG && !showB && showA) {
-          // only alpha visible -> show mask
           nr = ng = nb = a;
         }
       }
@@ -234,7 +235,6 @@ export default function App() {
           canvasRef={canvasRef}
           onClose={() => setShowLevels(false)}
           onApply={(newImageData) => {
-            // Persist applied result as new baseline for future edits
             setOriginalImageData(new ImageData(
               new Uint8ClampedArray(newImageData.data),
               newImageData.width,
@@ -271,9 +271,7 @@ export default function App() {
           zoomToArea={zoomToArea}
           zoomOutFromArea={zoomOutFromArea}
           onMouseDown={(e) => {
-            // keep panning behavior
             onMouseDown?.(e);
-            // Eyedropper handling: left click
             if (e.button === 0 && activeTool === 'eyedropper' && imageInfo && canvasRef.current) {
               try {
                 const vp = viewportRef.current;
@@ -314,7 +312,6 @@ export default function App() {
           <InfoPanel t={t} imageInfo={imageInfo} zoom={formatZoom(zoom)} activeToolLabel={activeToolLabel} eyedropper={eyedropper} />
           <ChannelsPanel t={t} imageInfo={imageInfo} originalImageData={originalImageData} channels={channels} setChannels={setChannels} />
 
-          {/* Levels trigger */}
           <div className="info-section levels-trigger">
             <h3 className="info-section__title">
               {t('levels.title')}
