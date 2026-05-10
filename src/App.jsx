@@ -259,21 +259,17 @@ export default function App() {
           zoomOutFromArea={zoomOutFromArea}
           onMouseDown={(e) => {
             onMouseDown?.(e);
-            if (e.button === 0 && activeTool === 'eyedropper' && imageInfo && canvasRef.current) {
+            if (e.button === 0 && activeTool === 'eyedropper' && imageInfo && originalImageData) {
               try {
                 const vp = viewportRef.current;
                 const rect = vp.getBoundingClientRect();
-                const px = e.clientX - rect.left;
-                const py = e.clientY - rect.top;
-                const imgX = Math.floor((px - offset.x) / zoom);
-                const imgY = Math.floor((py - offset.y) / zoom);
-                const c = canvasRef.current;
-                const ctx = c.getContext('2d');
-                if (imgX >= 0 && imgY >= 0 && imgX < c.width && imgY < c.height) {
-                  const d = ctx.getImageData(imgX, imgY, 1, 1).data;
-                  const r = d[0], g = d[1], b = d[2];
-                  const lab = rgbToLab(r, g, b);
-                  setEyedropper({ x: imgX, y: imgY, r, g, b, a: d[3], lab });
+                const imgX = Math.floor((e.clientX - rect.left - offset.x) / zoom);
+                const imgY = Math.floor((e.clientY - rect.top  - offset.y) / zoom);
+                const { width, height, data } = originalImageData;
+                if (imgX >= 0 && imgY >= 0 && imgX < width && imgY < height) {
+                  const idx = (imgY * width + imgX) * 4;
+                  const r = data[idx], g = data[idx + 1], b = data[idx + 2], a = data[idx + 3];
+                  setEyedropper({ x: imgX, y: imgY, r, g, b, a, lab: rgbToLab(r, g, b) });
                 }
               } catch (err) {
                 console.warn('Eyedropper failed', err);
