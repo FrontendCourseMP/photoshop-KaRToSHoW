@@ -89,6 +89,8 @@ button:disabled { cursor: not-allowed; }
 
 /* Панель меню */
 .menubar {
+  position: relative;
+  z-index: 10;
   display: flex;
   align-items: center;
   background: var(--c-bar);
@@ -365,6 +367,7 @@ button:disabled { cursor: not-allowed; }
 /* Панель инструментов */
 .toolbar {
   position: relative;
+  z-index: 5;
   display: flex;
   align-items: center;
   justify-content: flex-start;
@@ -612,6 +615,7 @@ button:disabled { cursor: not-allowed; }
 .viewport {
   position: relative;
   overflow: hidden;
+  z-index: 0; /* stacking context — изолирует compositor layers canvas от UI поверх */
   background-color: var(--c-base);
   /* Тонкая сетка / точечный узор */
   background-image: radial-gradient(circle, var(--c-border) 1px, transparent 1px);

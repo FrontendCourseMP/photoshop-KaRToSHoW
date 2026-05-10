@@ -1,4 +1,4 @@
-import { useState, useRef, useCallback, useMemo, useEffect } from 'react';
+import { useState, useRef, useMemo, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import { formatZoom } from './utils/zoom';
 import useLanguage from './hooks/useLanguage';
@@ -58,37 +58,18 @@ export default function App() {
   const { zoom, offset, activeTool, setActiveTool, cursor, fitToScreen, fillToScreen, zoomTo100, zoomIn, zoomOut, zoomToArea, zoomOutFromArea, handleZoomChange, onMouseDown } = viewport;
   const [zoomMode, setZoomMode] = useState('in');
 
-  // Рисует полученные данные изображения на canvas и обновляет размеры
-  const drawImageData = useCallback((imgData) => {
-    const c = canvasRef.current;
-    c.width = imgData.width; c.height = imgData.height;
-    c.getContext('2d').putImageData(imgData, 0, 0);
-  }, []);
-
-  const { handleFile, saveAs } = useImageManager({ canvasRef, drawImageData, setImageInfo, setError, t });
+  const { handleFile, saveAs } = useImageManager({
+    canvasRef,
+    setImageInfo,
+    setOriginalImageData,
+    setChannels,
+    setError,
+    t,
+  });
   const fileInputRef = useRef(null);
 
-  useEffect(() => {
-    if (!imageInfo || !canvasRef.current) return;
-    const c = canvasRef.current;
-    const ctx = c.getContext('2d');
-    try {
-      const d = ctx.getImageData(0, 0, c.width, c.height);
-      // keep a copy
-      const copy = new ImageData(new Uint8ClampedArray(d.data), d.width, d.height);
-      setOriginalImageData(copy);
-      const isGray = (imageInfo.depth || '').toLowerCase().includes('gray');
-      const hasAlpha = (imageInfo.depth || '').toLowerCase().includes('alpha') || (imageInfo.depth || '').toLowerCase().includes('rgba');
-      if (isGray) {
-        setChannels({ Gray: true, A: !!hasAlpha });
-      } else {
-        setChannels({ R: true, G: true, B: true, A: !!hasAlpha });
-      }
-      setEyedropper(null);
-    } catch (err) {
-      console.warn('Не удалось захватить исходные данные изображения', err);
-    }
-  }, [imageInfo]);
+  // Сбрасываем пипетку при каждой смене изображения
+  useEffect(() => { setEyedropper(null); }, [imageInfo]);
 
   useEffect(() => {
     if (!originalImageData || !canvasRef.current) return;
@@ -97,7 +78,7 @@ export default function App() {
     const w = originalImageData.width, h = originalImageData.height;
     const src = originalImageData.data;
     const out = new Uint8ClampedArray(src.length);
-    const isGray = (imageInfo?.depth || '').toLowerCase().includes('gray');
+    const isGray = 'Gray' in channels;
     const showR = !!channels.R;
     const showG = !!channels.G;
     const showB = !!channels.B;
@@ -122,7 +103,7 @@ export default function App() {
       out[i] = nr; out[i + 1] = ng; out[i + 2] = nb; out[i + 3] = na;
     }
     ctx.putImageData(new ImageData(out, w, h), 0, 0);
-  }, [imageInfo, originalImageData, channels]);
+  }, [originalImageData, channels]);
 
   const accentSoft = useMemo(() => lightenColor(accentColor, 0.6), [accentColor]);
   const accentBg = useMemo(() => {

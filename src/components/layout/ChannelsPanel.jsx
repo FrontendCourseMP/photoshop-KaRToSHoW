@@ -30,7 +30,9 @@ export default function ChannelsPanel({ t, imageInfo, originalImageData, channel
 
   useEffect(() => {
     if (!imageInfo || !originalImageData) return;
-    const { width, height } = imageInfo;
+    const width  = originalImageData.width;
+    const height = originalImageData.height;
+    if (imageInfo.width !== width || imageInfo.height !== height) return;
     const thumbW = 40;
     const thumbH = 40;
     const orig = originalImageData.data;

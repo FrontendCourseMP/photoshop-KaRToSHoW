@@ -153,7 +153,6 @@ return (
           height: imageInfo?.height ?? 1,
           transformOrigin: '0 0',
           transform: `translate(${offset.x}px,${offset.y}px) scale(${zoom})`,
-          willChange: 'transform',
           visibility: imageInfo ? 'visible' : 'hidden',
           pointerEvents: imageInfo ? 'auto' : 'none',
         }}
