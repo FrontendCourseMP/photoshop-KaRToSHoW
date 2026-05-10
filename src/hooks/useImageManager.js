@@ -19,7 +19,7 @@ const FORMATS = [
 function buildChannels(depth) {
   const d        = depth.toLowerCase();
   const isGray   = d.includes('gray');
-  const hasAlpha = d.includes('alpha') || d.includes('rgba');
+  const hasAlpha = d.includes('alpha') || d.includes('rgba') || d.includes('mask');
   return isGray
     ? { Gray: true, A: !!hasAlpha }
     : { R: true, G: true, B: true, A: !!hasAlpha };

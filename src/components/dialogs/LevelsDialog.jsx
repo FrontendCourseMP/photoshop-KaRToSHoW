@@ -71,7 +71,17 @@ function applyLUTs(src, { lutR, lutG, lutB, lutA }) {
   return out;
 }
 
-export default function LevelsDialog({ t, originalImageData, canvasRef, onClose, onApply }) {
+export default function LevelsDialog({ t, imageInfo, originalImageData, canvasRef, onClose, onApply }) {
+  const depth    = imageInfo?.depth?.toLowerCase() ?? '';
+  const isGray   = depth.includes('gray');
+  const hasMask  = depth.includes('mask');
+  const hasAlpha = depth.includes('alpha') || depth.includes('rgba');
+
+  // Список каналов в диалоге зависит от типа изображения
+  const channelList = isGray
+    ? ['master', ...(hasMask ? ['A'] : [])]
+    : ['master', 'R', 'G', 'B', ...(hasAlpha ? ['A'] : [])];
+
   const histCanvasRef = useRef(null);
   const rafIdRef      = useRef(null);
 
@@ -94,12 +104,23 @@ export default function LevelsDialog({ t, originalImageData, canvasRef, onClose,
   useEffect(() => { activeChannelRef.current = activeChannel;          }, [activeChannel]);
   useEffect(() => { levelsRef.current        = levels;                 }, [levels]);
 
+  // Если текущий активный канал не входит в список — сброс на master
+  useEffect(() => {
+    if (!channelList.includes(activeChannel)) setActiveChannel('master');
+  }, [channelList, activeChannel]);
+
   // ── Histogram ──────────────────────────────────────────────────────────────
   const histogram = useMemo(() => {
     if (!originalImageData) return null;
-    const ch = activeChannel === 'master' ? 'luminance' : activeChannel;
+    let ch;
+    if (activeChannel === 'master') {
+      // Для grayscale master = серый канал (R=G=B), для RGB = яркость
+      ch = isGray ? 'R' : 'luminance';
+    } else {
+      ch = activeChannel;
+    }
     return buildHistogram(originalImageData, ch);
-  }, [originalImageData, activeChannel]);
+  }, [originalImageData, activeChannel, isGray]);
 
   const normalizedHist = useMemo(
     () => histogram ? normalizeHistogram(histogram, histScale) : null,
@@ -444,7 +465,7 @@ export default function LevelsDialog({ t, originalImageData, canvasRef, onClose,
         <div className="levels__section">
           <label>{t('levels.channel')}</label>
           <div className="levels__channel-tabs">
-            {(['master', 'R', 'G', 'B', 'A']).map(ch => (
+            {channelList.map(ch => (
               <button
                 key={ch}
                 className={`levels__ch-tab${activeChannel === ch ? ' levels__ch-tab--active' : ''}`}
@@ -452,10 +473,11 @@ export default function LevelsDialog({ t, originalImageData, canvasRef, onClose,
                 onClick={() => setActiveChannel(ch)}
                 style={activeChannel === ch ? { '--tab-color': CHANNEL_COLORS[ch].stroke } : {}}
               >
-                {ch === 'master' ? t('levels.master')
+                {ch === 'master' ? (isGray ? t('channels.grayscale') : t('levels.master'))
                   : ch === 'R'  ? t('channels.red')
                   : ch === 'G'  ? t('channels.green')
                   : ch === 'B'  ? t('channels.blue')
+                  : hasMask     ? t('channels.mask')
                   :               t('channels.alpha')}
               </button>
             ))}

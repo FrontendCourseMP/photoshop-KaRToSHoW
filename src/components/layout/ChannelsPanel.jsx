@@ -2,20 +2,33 @@ import { useEffect, useRef } from 'react';
 
 function makeThumbFromImageData(orig, width, height, thumbW, thumbH, channel) {
   const out = new Uint8ClampedArray(thumbW * thumbH * 4);
+
+  // Вписываем изображение в квадрат thumbW×thumbH с сохранением пропорций
+  const scale = Math.min(thumbW / width, thumbH / height);
+  const sw    = Math.max(1, Math.round(width  * scale));
+  const sh    = Math.max(1, Math.round(height * scale));
+  const ox    = Math.floor((thumbW - sw) / 2);
+  const oy    = Math.floor((thumbH - sh) / 2);
+
   for (let y = 0; y < thumbH; y++) {
     for (let x = 0; x < thumbW; x++) {
-      const sx = Math.floor(x * width / thumbW);
-      const sy = Math.floor(y * height / thumbH);
+      const di = (y * thumbW + x) * 4;
+      if (x < ox || x >= ox + sw || y < oy || y >= oy + sh) {
+        // Letterbox — прозрачно (CSS-фон канвы видна)
+        out[di + 3] = 0;
+        continue;
+      }
+      const sx = Math.min(width  - 1, Math.floor((x - ox) * width  / sw));
+      const sy = Math.min(height - 1, Math.floor((y - oy) * height / sh));
       const si = (sy * width + sx) * 4;
       const r = orig[si], g = orig[si + 1], b = orig[si + 2], a = orig[si + 3];
-      let rr = 0, gg = 0, bb = 0, aa = 255;
-      if (channel === 'R') { rr = r; }
-      else if (channel === 'G') { gg = g; }
-      else if (channel === 'B') { bb = b; }
-      else if (channel === 'A') { rr = gg = bb = a; }
-      else if (channel === 'Gray') { rr = gg = bb = r; }
-      const di = (y * thumbW + x) * 4;
-      out[di] = rr; out[di + 1] = gg; out[di + 2] = bb; out[di + 3] = aa;
+      let rr = 0, gg = 0, bb = 0;
+      if      (channel === 'R')    rr = r;
+      else if (channel === 'G')    gg = g;
+      else if (channel === 'B')    bb = b;
+      else if (channel === 'A')    rr = gg = bb = a;
+      else if (channel === 'Gray') rr = gg = bb = r;
+      out[di] = rr; out[di + 1] = gg; out[di + 2] = bb; out[di + 3] = 255;
     }
   }
   return new ImageData(out, thumbW, thumbH);
@@ -36,8 +49,9 @@ export default function ChannelsPanel({ t, imageInfo, originalImageData, channel
     const thumbW = 40;
     const thumbH = 40;
     const orig = originalImageData.data;
-    const isGray  = imageInfo.depth?.toLowerCase().includes('gray');
-    const hasAlpha = imageInfo.depth?.toLowerCase().includes('alpha') || imageInfo.depth?.toLowerCase().includes('rgba');
+    const d        = imageInfo.depth?.toLowerCase() ?? '';
+    const isGray   = d.includes('gray');
+    const hasAlpha = d.includes('alpha') || d.includes('rgba') || d.includes('mask');
 
     const channelsList = isGray ? ['Gray'] : ['R', 'G', 'B'];
     if (hasAlpha) channelsList.push('A');
@@ -64,17 +78,19 @@ export default function ChannelsPanel({ t, imageInfo, originalImageData, channel
     </aside>
   );
 
-  const isGray   = imageInfo.depth?.toLowerCase().includes('gray');
-  const hasAlpha = imageInfo.depth?.toLowerCase().includes('alpha') || imageInfo.depth?.toLowerCase().includes('rgba');
+  const d        = imageInfo.depth?.toLowerCase() ?? '';
+  const isGray   = d.includes('gray');
+  const isMask   = d.includes('mask');
+  const hasAlpha = d.includes('alpha') || d.includes('rgba') || isMask;
   const items    = isGray ? ['Gray'] : ['R', 'G', 'B'];
   if (hasAlpha) items.push('A');
 
   const refMap  = { R: rRef, G: gRef, B: bRef, A: aRef, Gray: grayRef };
   const labelMap = {
-    R: t ? t('channels.red') : 'Red',
-    G: t ? t('channels.green') : 'Green',
-    B: t ? t('channels.blue') : 'Blue',
-    A: t ? t('channels.alpha') : 'Alpha',
+    R:    t ? t('channels.red')       : 'Red',
+    G:    t ? t('channels.green')     : 'Green',
+    B:    t ? t('channels.blue')      : 'Blue',
+    A:    isMask ? (t ? t('channels.mask') : 'Mask') : (t ? t('channels.alpha') : 'Alpha'),
     Gray: t ? t('channels.grayscale') : 'Grayscale',
   };
 

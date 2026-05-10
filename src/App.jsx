@@ -87,19 +87,25 @@ export default function App() {
 
     for (let i = 0; i < src.length; i += 4) {
       const r = src[i], g = src[i + 1], b = src[i + 2], a = src[i + 3];
-      let nr = 0, ng = 0, nb = 0, na = 255;
+      let nr = 0, ng = 0, nb = 0;
       if (isGray) {
-        if (showGray) nr = ng = nb = r;
-        if (showA && !showGray) nr = ng = nb = a;
+        if (showGray && showA) {
+          // Маска как множитель: чёрный где mask=0, оригинальный серый где mask=255
+          nr = ng = nb = a > 0 ? r : 0;
+        } else if (showGray) {
+          nr = ng = nb = r;
+        } else if (showA) {
+          nr = ng = nb = a; // только маска — непрозрачный B&W
+        }
       } else {
         nr = showR ? r : 0;
         ng = showG ? g : 0;
         nb = showB ? b : 0;
-        if (!showR && !showG && !showB && showA) {
-          nr = ng = nb = a;
-        }
+        if (!showR && !showG && !showB && showA) nr = ng = nb = a;
       }
-      na = showA ? a : 255;
+      // Grayscale — всегда непрозрачный (маска видна как чёрные пиксели, не шахматка).
+      // RGB — прозрачность только при совместном показе цветовых каналов + A.
+      const na = isGray ? 255 : (showA && (showR || showG || showB) ? a : 255);
       out[i] = nr; out[i + 1] = ng; out[i + 2] = nb; out[i + 3] = na;
     }
     ctx.putImageData(new ImageData(out, w, h), 0, 0);
@@ -211,8 +217,8 @@ export default function App() {
       {showLevels && (
         <LevelsDialog
           t={t}
-          originalImageData={levelsOriginalImageData}
           imageInfo={imageInfo}
+          originalImageData={levelsOriginalImageData}
           canvasRef={canvasRef}
           onClose={() => setShowLevels(false)}
           onApply={(newImageData) => {
