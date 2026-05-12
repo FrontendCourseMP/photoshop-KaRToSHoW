@@ -33,6 +33,7 @@ import StatusBar from './components/layout/StatusBar';
 import ErrorBanner from './components/ui/ErrorBanner';
 import ThemeSettings from './components/ui/ThemeSettings';
 import LevelsDialog from './components/dialogs/LevelsDialog';
+import ResizeDialog from './components/dialogs/ResizeDialog';
 import { rgbToLab } from './utils/color';
 
 // Корневой компонент приложения, собирает хуки и визуальные блоки
@@ -51,6 +52,8 @@ export default function App() {
   const [themeMode, setThemeMode] = useState(() => localStorage.getItem('themeMode') || 'dark');
   const [showLevels, setShowLevels] = useState(false);
   const [levelsOriginalImageData, setLevelsOriginalImageData] = useState(null);
+  const [showResize, setShowResize] = useState(false);
+  const [resizeOriginalImageData, setResizeOriginalImageData] = useState(null);
   const [showThemeSettings, setShowThemeSettings] = useState(false);
   const { error, setError, clearError } = useErrorState();
 
@@ -139,6 +142,11 @@ export default function App() {
       setLevelsOriginalImageData(originalImageData ? new ImageData(new Uint8ClampedArray(originalImageData.data), originalImageData.width, originalImageData.height) : null);
       setShowLevels(true);
     },
+    onShowResize: () => {
+      if (!originalImageData) return;
+      setResizeOriginalImageData(new ImageData(new Uint8ClampedArray(originalImageData.data), originalImageData.width, originalImageData.height));
+      setShowResize(true);
+    },
   }), [zoomIn, zoomOut, fitToScreen, zoomTo100, setActiveTool, originalImageData]);
 
   useHotkeys(hotkeys);
@@ -165,6 +173,11 @@ export default function App() {
         setLevelsOriginalImageData(originalImageData ? new ImageData(new Uint8ClampedArray(originalImageData.data), originalImageData.width, originalImageData.height) : null);
         setShowLevels(true);
       },
+      showResize: () => {
+        if (!originalImageData) return;
+        setResizeOriginalImageData(new ImageData(new Uint8ClampedArray(originalImageData.data), originalImageData.width, originalImageData.height));
+        setShowResize(true);
+      },
       themeLight: () => setThemeMode('light'),
       themeDark: () => setThemeMode('dark'),
       languageEnglish: () => setLanguage('en'),
@@ -172,6 +185,8 @@ export default function App() {
     },
     file: [
       { label: t('menu.open'), actionKey: 'browse', shortcut: 'Ctrl+O' },
+      '---',
+      { label: t('resize.open'), disabled: !imageInfo, actionKey: 'showResize' },
       '---',
       { label: t('menu.exportPng'), disabled: !imageInfo, actionKey: 'exportPng' },
       { label: t('menu.exportJpeg'), disabled: !imageInfo, actionKey: 'exportJpeg' },
@@ -189,7 +204,7 @@ export default function App() {
     settings: [
       { label: t('menu.themeSettings'), actionKey: 'showThemeSettings', shortcut: 'Ctrl+Shift+C' },
     ],
-  }), [t, imageInfo, handleFile, saveAs, zoomIn, zoomOut, fitToScreen, zoomTo100, handleZoomChange, setLanguage, themeMode, originalImageData]);
+  }), [t, imageInfo, handleFile, saveAs, zoomIn, zoomOut, fitToScreen, zoomTo100, handleZoomChange, setLanguage, themeMode, originalImageData, setShowResize, setResizeOriginalImageData]);
 
   const activeToolLabel = activeTool === 'hand' ? t('info.hand') : activeTool === 'eyedropper' ? t('info.eyedropper') || 'Eyedropper' : t('info.zoomTool');
 
@@ -220,6 +235,7 @@ export default function App() {
           imageInfo={imageInfo}
           originalImageData={levelsOriginalImageData}
           canvasRef={canvasRef}
+          themeMode={themeMode}
           onClose={() => setShowLevels(false)}
           onApply={(newImageData) => {
             setOriginalImageData(new ImageData(
@@ -227,6 +243,23 @@ export default function App() {
               newImageData.width,
               newImageData.height,
             ));
+          }}
+        />
+      )}
+      {showResize && (
+        <ResizeDialog
+          t={t}
+          imageInfo={imageInfo}
+          originalImageData={resizeOriginalImageData}
+          onClose={() => setShowResize(false)}
+          onApply={(newImageData, newW, newH) => {
+            if (canvasRef.current) {
+              canvasRef.current.width  = newW;
+              canvasRef.current.height = newH;
+            }
+            setOriginalImageData(newImageData);
+            setImageInfo(prev => prev ? { ...prev, width: newW, height: newH } : prev);
+            requestAnimationFrame(fitToScreen);
           }}
         />
       )}
@@ -311,6 +344,21 @@ export default function App() {
               }}
             >
               {t('levels.open')}
+            </button>
+          </div>
+
+          <div className="info-section levels-trigger">
+            <h3 className="info-section__title">{t('resize.title')}</h3>
+            <button
+              className="levels-trigger__btn"
+              disabled={!imageInfo}
+              onClick={() => {
+                if (!originalImageData) return;
+                setResizeOriginalImageData(new ImageData(new Uint8ClampedArray(originalImageData.data), originalImageData.width, originalImageData.height));
+                setShowResize(true);
+              }}
+            >
+              {t('resize.open')}
             </button>
           </div>
         </div>

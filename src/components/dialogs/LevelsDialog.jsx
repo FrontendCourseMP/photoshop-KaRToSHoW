@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { buildHistogram, normalizeHistogram } from '../../utils/histogram';
 import { buildLUT } from '../../utils/levels';
+import Dialog from '../ui/Dialog';
 
 const DEFAULT_LEVELS = {
   master: { black: 0, gamma: 1.0, white: 255 },
@@ -71,7 +72,7 @@ function applyLUTs(src, { lutR, lutG, lutB, lutA }) {
   return out;
 }
 
-export default function LevelsDialog({ t, imageInfo, originalImageData, canvasRef, onClose, onApply }) {
+export default function LevelsDialog({ t, imageInfo, originalImageData, canvasRef, onClose, onApply, themeMode = 'dark' }) {
   const depth    = imageInfo?.depth?.toLowerCase() ?? '';
   const isGray   = depth.includes('gray');
   const hasMask  = depth.includes('mask');
@@ -93,12 +94,9 @@ export default function LevelsDialog({ t, imageInfo, originalImageData, canvasRe
   const [isDirty,       setIsDirty]       = useState(false);
 
   // Refs so callbacks never go stale
-  const currentLevelRef   = useRef(levels[activeChannel]);
-  const activeChannelRef  = useRef(activeChannel);
-  const levelsRef         = useRef(levels);
-  const dragStartRef      = useRef(null);
-  const draggingDialogRef = useRef(false);
-  const [dialogOffset, setDialogOffset] = useState({ x: 0, y: 0 });
+  const currentLevelRef  = useRef(levels[activeChannel]);
+  const activeChannelRef = useRef(activeChannel);
+  const levelsRef        = useRef(levels);
 
   useEffect(() => { currentLevelRef.current  = levels[activeChannel]; }, [levels, activeChannel]);
   useEffect(() => { activeChannelRef.current = activeChannel;          }, [activeChannel]);
@@ -137,24 +135,32 @@ export default function LevelsDialog({ t, imageInfo, originalImageData, canvasRe
     const W = canvas.width;
     const H = canvas.height;
     const color = CHANNEL_COLORS[activeChannel];
+    const isLight = themeMode === 'light';
 
     // Background
     ctx.clearRect(0, 0, W, H);
     const bg = ctx.createLinearGradient(0, 0, 0, H);
-    bg.addColorStop(0, '#0f0f14');
-    bg.addColorStop(1, '#0a0a0d');
+    if (isLight) {
+      bg.addColorStop(0, '#eeeef5');
+      bg.addColorStop(1, '#e6e6f0');
+    } else {
+      bg.addColorStop(0, '#0f0f14');
+      bg.addColorStop(1, '#0a0a0d');
+    }
     ctx.fillStyle = bg;
     ctx.fillRect(0, 0, W, H);
 
     // Grid
     ctx.save();
+    const gridV = isLight ? 'rgba(0,0,0,0.08)' : 'rgba(255,255,255,0.06)';
+    const gridH = isLight ? 'rgba(0,0,0,0.05)' : 'rgba(255,255,255,0.04)';
     for (let i = 1; i < 4; i++) {
-      ctx.strokeStyle = 'rgba(255,255,255,0.06)';
+      ctx.strokeStyle = gridV;
       ctx.lineWidth = 1;
       ctx.beginPath(); ctx.moveTo((W / 4) * i, 0); ctx.lineTo((W / 4) * i, H); ctx.stroke();
     }
     for (let i = 1; i < 4; i++) {
-      ctx.strokeStyle = 'rgba(255,255,255,0.04)';
+      ctx.strokeStyle = gridH;
       ctx.beginPath(); ctx.moveTo(0, (H / 4) * i); ctx.lineTo(W, (H / 4) * i); ctx.stroke();
     }
     ctx.restore();
@@ -219,6 +225,8 @@ export default function LevelsDialog({ t, imageInfo, originalImageData, canvasRe
     const TH  = 10;         // triangle height
     const TY  = H;          // y of triangle tip (bottom)
 
+    const ruleColor = isLight ? 'rgba(0,0,0,0.5)' : 'rgba(255,255,255,0.5)';
+
     const drawRule = (x, col) => {
       ctx.save();
       ctx.strokeStyle  = col;
@@ -264,18 +272,18 @@ export default function LevelsDialog({ t, imageInfo, originalImageData, canvasRe
     }
 
     // Black marker
-    drawRule(blackX, '#ffffff');
-    drawTriangle(blackX, '#111', 'rgba(255,255,255,0.6)', 'rgba(0,0,0,0.8)', 4);
+    drawRule(blackX, ruleColor);
+    drawTriangle(blackX, '#111', isLight ? 'rgba(0,0,0,0.5)' : 'rgba(255,255,255,0.6)', 'rgba(0,0,0,0.8)', 4);
 
     // White marker
-    drawRule(whiteX, '#ffffff');
-    drawTriangle(whiteX, '#eee', 'rgba(255,255,255,0.9)', 'rgba(255,255,255,0.4)', 6);
+    drawRule(whiteX, ruleColor);
+    drawTriangle(whiteX, isLight ? '#bbb' : '#eee', isLight ? 'rgba(0,0,0,0.4)' : 'rgba(255,255,255,0.9)', 'rgba(120,120,120,0.4)', 6);
 
     // Gamma marker (narrower, gray)
-    drawRule(gammaX, '#aaaaaa');
-    drawTriangle(gammaX, '#888', 'rgba(255,255,255,0.55)', 'rgba(200,200,200,0.5)', 5, true);
+    drawRule(gammaX, ruleColor);
+    drawTriangle(gammaX, '#888', isLight ? 'rgba(0,0,0,0.4)' : 'rgba(255,255,255,0.55)', 'rgba(160,160,160,0.5)', 5, true);
 
-  }, [normalizedHist, currentLevels, activeChannel]);
+  }, [normalizedHist, currentLevels, activeChannel, themeMode]);
 
   // ── Level change helpers ───────────────────────────────────────────────────
   const handleLevelChange = useCallback((key, rawValue) => {
@@ -297,17 +305,6 @@ export default function LevelsDialog({ t, imageInfo, originalImageData, canvasRe
   }, []);
 
   // ── Histogram drag (black / gamma / white) ─────────────────────────────────
-  const handleDialogMouseDown = useCallback((e) => {
-    if (e.button !== 0) return;
-    draggingDialogRef.current = true;
-    dragStartRef.current = {
-      startX: e.clientX,
-      startY: e.clientY,
-      startOffset: dialogOffset,
-    };
-    e.preventDefault();
-  }, [dialogOffset]);
-
   const handleHistMouseDown = useCallback((e) => {
     if (!histCanvasRef.current) return;
     const rect = histCanvasRef.current.getBoundingClientRect();
@@ -402,64 +399,24 @@ export default function LevelsDialog({ t, imageInfo, originalImageData, canvasRe
     onClose();
   };
 
-  useEffect(() => {
-    const handleKeyDown = (e) => {
-      if (e.key === 'Escape') {
-        handleCancel();
-      }
-    };
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [handleCancel]);
-
-  useEffect(() => {
-    const onMove = (e) => {
-      if (!draggingDialogRef.current || !dragStartRef.current) return;
-      const dx = e.clientX - dragStartRef.current.startX;
-      const dy = e.clientY - dragStartRef.current.startY;
-      setDialogOffset({
-        x: dragStartRef.current.startOffset.x + dx,
-        y: dragStartRef.current.startOffset.y + dy,
-      });
-    };
-
-    const onUp = () => {
-      draggingDialogRef.current = false;
-      dragStartRef.current = null;
-    };
-
-    document.addEventListener('mousemove', onMove);
-    document.addEventListener('mouseup', onUp);
-    return () => {
-      document.removeEventListener('mousemove', onMove);
-      document.removeEventListener('mouseup', onUp);
-    };
-  }, []);
-
   if (!originalImageData) {
     return (
-      <dialog className="dialog dialog--levels" open>
-        <div className="dialog__content">
-          <h2>{t('levels.title')}</h2>
-          <p style={{ color: 'var(--c-text-2)', fontSize: 12 }}>{t('status.noFile')}</p>
+      <Dialog title={t('levels.title')} onClose={onClose}>
+        <p style={{ color: 'var(--c-text-2)', fontSize: 12, marginBottom: 16 }}>{t('status.noFile')}</p>
+        <div className="dialog__buttons">
+          <div style={{ flex: 1 }} />
           <button className="btn btn--secondary" onClick={onClose}>{t('menu.close')}</button>
         </div>
-      </dialog>
+      </Dialog>
     );
   }
 
   return (
-    <dialog className="dialog dialog--levels" open>
-      <div
-        className="dialog__content"
-        style={{ transform: `translate(${dialogOffset.x}px, ${dialogOffset.y}px)` }}
-      >
-
-        {/* ── Header ── */}
-        <div className="dialog__header" onMouseDown={handleDialogMouseDown}>
-          <h2>{t('levels.title')}</h2>
-          {isDirty && <span className="levels__dirty-badge" title="Unsaved changes">●</span>}
-        </div>
+    <Dialog
+      title={t('levels.title')}
+      onClose={handleCancel}
+      badge={isDirty && <span className="levels__dirty-badge" title="Unsaved changes">●</span>}
+    >
 
         {/* ── Channel tabs ── */}
         <div className="levels__section">
@@ -601,7 +558,6 @@ export default function LevelsDialog({ t, imageInfo, originalImageData, canvasRe
           <button className="btn btn--primary"   onClick={handleApply}>{t('levels.apply')}</button>
         </div>
 
-      </div>
-    </dialog>
+    </Dialog>
   );
 }
