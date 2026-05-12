@@ -1,61 +1,30 @@
 import { sniffDepth } from './file';
 import { decodeGB7 } from './gb7';
 
-// Ждёт загрузки HTMLImageElement
-function waitForImage(url) {
-  return new Promise((resolve, reject) => {
-    const img  = new Image();
-    img.onload  = () => resolve(img);
-    img.onerror = () => reject(new Error('не удалось декодировать изображение'));
-    img.src = url;
-  });
-}
-
-// Читает File как ArrayBuffer
-function readAsArrayBuffer(file) {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onload  = e => resolve(e.target.result);
-    reader.onerror = () => reject(new Error('не удалось прочитать файл'));
-    reader.readAsArrayBuffer(file);
-  });
-}
-
-// ─── Публичные загрузчики ─────────────────────────────────────────────────────
-// Каждый возвращает Promise<{ imageData: ImageData, meta: object }>
-
 export async function loadStandard(file) {
-  const url = URL.createObjectURL(file);
-  try {
-    const img = await waitForImage(url);
+  const bitmap = await createImageBitmap(file);
+  const { width, height } = bitmap;
 
-    // Отдельный canvas — не трогаем основной во время декодирования
-    const tmp = document.createElement('canvas');
-    tmp.width  = img.naturalWidth;
-    tmp.height = img.naturalHeight;
-    const ctx  = tmp.getContext('2d');
-    ctx.drawImage(img, 0, 0);
+  const tmp = new OffscreenCanvas(width, height);
+  const ctx = tmp.getContext('2d');
+  ctx.drawImage(bitmap, 0, 0);
+  bitmap.close();
 
-    // getImageData после drawImage учитывает ICC-профиль браузера
-    const raw = ctx.getImageData(0, 0, tmp.width, tmp.height);
-
-    return {
-      imageData: raw,
-      meta: {
-        width:    tmp.width,
-        height:   tmp.height,
-        depth:    sniffDepth(raw.data),
-        filename: file.name,
-        format:   file.name.toLowerCase().endsWith('.png') ? 'PNG' : 'JPEG',
-      },
-    };
-  } finally {
-    URL.revokeObjectURL(url);
-  }
+  const raw = ctx.getImageData(0, 0, width, height);
+  return {
+    imageData: raw,
+    meta: {
+      width,
+      height,
+      depth:    sniffDepth(raw.data),
+      filename: file.name,
+      format:   file.name.toLowerCase().endsWith('.png') ? 'PNG' : 'JPEG',
+    },
+  };
 }
 
 export async function loadGB7(file) {
-  const buf = await readAsArrayBuffer(file);
+  const buf = await file.arrayBuffer();
   try {
     const { imageData, width, height, hasMask } = decodeGB7(buf);
     return {
