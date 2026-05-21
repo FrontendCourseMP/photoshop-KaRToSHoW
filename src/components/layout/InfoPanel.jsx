@@ -96,20 +96,31 @@ export default function InfoPanel({ t, imageInfo, zoom, activeToolLabel, eyedrop
                 ))}
               </div>
 
-              {/* CIELAB */}
+              {/* CIELAB bars — L: 0–100, a/b: –128…+127 */}
               {lab && (
-                <div className="eyedropper-lab">
-                  {[
-                    { key: 'L', val: lab.L },
-                    { key: 'a', val: lab.a },
-                    { key: 'b', val: lab.b },
-                  ].map(({ key, val }) => (
-                    <div key={key} className="eyedropper-lab__cell">
-                      <span className="eyedropper-lab__key">{key}</span>
-                      <span className="eyedropper-lab__val">{val?.toFixed(1)}</span>
-                    </div>
-                  ))}
-                </div>
+                <>
+                  <div className="eyedropper-section-label">CIE L*a*b*</div>
+                  <div className="eyedropper-channels eyedropper-channels--lab">
+                    {[
+                      { key: 'L', cls: 'lab-L', val: lab.L, pct: (lab.L / 100) * 100 },
+                      { key: 'a', cls: 'lab-a', val: lab.a, pct: ((lab.a + 128) / 255) * 100 },
+                      { key: 'b', cls: 'lab-b', val: lab.b, pct: ((lab.b + 128) / 255) * 100 },
+                    ].map(({ key, cls, val, pct }) => (
+                      <div key={key} className={`eyedropper-ch eyedropper-ch--${cls}`}>
+                        <span className="eyedropper-ch__label">{key}</span>
+                        <div className="eyedropper-ch__track">
+                          <div
+                            className="eyedropper-ch__fill"
+                            style={{ width: `${Math.max(0, Math.min(100, pct))}%` }}
+                          />
+                        </div>
+                        <span className="eyedropper-ch__val">
+                          {val != null ? (val >= 0 && key !== 'L' ? '+' : '') + val.toFixed(0) : '—'}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                </>
               )}
             </>
           );
