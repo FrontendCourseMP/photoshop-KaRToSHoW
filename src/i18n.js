@@ -130,6 +130,14 @@ const resources = {
         apply: 'Apply',
         open: 'Adjust Levels…',
       },
+      rp: {
+        tabLevels: 'Levels',
+        tabResize: 'Scale',
+        tabFilter: 'Filter',
+        levelsDesc: 'Adjust black point, gamma and white point per channel.',
+        resizeDesc: 'Scale the image using bilinear or nearest-neighbor interpolation.',
+        filterDesc: 'Apply a 3×3 convolution kernel to one or all channels.',
+      },
       kernel: {
         title: 'Custom Filter',
         preset: 'Preset',
@@ -279,6 +287,14 @@ const resources = {
         cancel: 'Отмена',
         apply: 'Применить',
         open: 'Настроить уровни…',
+      },
+      rp: {
+        tabLevels: 'Уровни',
+        tabResize: 'Масштаб',
+        tabFilter: 'Фильтр',
+        levelsDesc: 'Настройте чёрную точку, гамму и белую точку по каналам.',
+        resizeDesc: 'Масштабирование билинейной или ближайшей интерполяцией.',
+        filterDesc: 'Применить свёрточное ядро 3×3 к одному или всем каналам.',
       },
       kernel: {
         title: 'Пользовательский фильтр',

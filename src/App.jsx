@@ -58,6 +58,7 @@ export default function App() {
   const [showKernelFilter, setShowKernelFilter] = useState(false);
   const [kernelOriginalImageData, setKernelOriginalImageData] = useState(null);
   const [showThemeSettings, setShowThemeSettings] = useState(false);
+  const [rightTab, setRightTab] = useState('levels');
   const { error, setError, clearError } = useErrorState();
 
   const viewport = useViewportControls(imageInfo, viewportRef);
@@ -356,53 +357,80 @@ export default function App() {
           <InfoPanel t={t} imageInfo={imageInfo} zoom={formatZoom(zoom)} activeToolLabel={activeToolLabel} eyedropper={eyedropper} />
           <ChannelsPanel t={t} imageInfo={imageInfo} originalImageData={originalImageData} channels={channels} setChannels={setChannels} />
 
-          <div className="info-section levels-trigger">
-            <h3 className="info-section__title">
-              {t('levels.title')}
-              <span className="levels-trigger__kbd" style={{ marginLeft: 'auto' }}>Ctrl+L</span>
-            </h3>
-            <button
-              className="levels-trigger__btn"
-              disabled={!imageInfo}
-              onClick={() => {
-                setLevelsOriginalImageData(originalImageData
-                  ? new ImageData(new Uint8ClampedArray(originalImageData.data), originalImageData.width, originalImageData.height)
-                  : null);
-                setShowLevels(true);
-              }}
-            >
-              {t('levels.open')}
-            </button>
-          </div>
+          {/* ── Переключалка инструментов ── */}
+          <div className="rp-tools">
+            <div className="rp-tabs">
+              {[
+                { id: 'levels', label: t('rp.tabLevels') },
+                { id: 'resize', label: t('rp.tabResize') },
+                { id: 'kernel', label: t('rp.tabFilter') },
+              ].map(tab => (
+                <button
+                  key={tab.id}
+                  className={`rp-tab${rightTab === tab.id ? ' rp-tab--active' : ''}`}
+                  onClick={() => setRightTab(tab.id)}
+                >
+                  {tab.label}
+                </button>
+              ))}
+            </div>
 
-          <div className="info-section levels-trigger">
-            <h3 className="info-section__title">{t('resize.title')}</h3>
-            <button
-              className="levels-trigger__btn"
-              disabled={!imageInfo}
-              onClick={() => {
-                if (!originalImageData) return;
-                setResizeOriginalImageData(new ImageData(new Uint8ClampedArray(originalImageData.data), originalImageData.width, originalImageData.height));
-                setShowResize(true);
-              }}
-            >
-              {t('resize.open')}
-            </button>
-          </div>
+            <div className="rp-tab-content">
 
-          <div className="info-section levels-trigger">
-            <h3 className="info-section__title">{t('kernel.title')}</h3>
-            <button
-              className="levels-trigger__btn"
-              disabled={!imageInfo}
-              onClick={() => {
-                if (!originalImageData) return;
-                setKernelOriginalImageData(new ImageData(new Uint8ClampedArray(originalImageData.data), originalImageData.width, originalImageData.height));
-                setShowKernelFilter(true);
-              }}
-            >
-              {t('kernel.open')}
-            </button>
+              {rightTab === 'levels' && (
+                <div className="rp-tool-body">
+                  <p className="rp-tool-desc">{t('rp.levelsDesc')}</p>
+                  <button
+                    className="levels-trigger__btn"
+                    disabled={!imageInfo}
+                    onClick={() => {
+                      setLevelsOriginalImageData(originalImageData
+                        ? new ImageData(new Uint8ClampedArray(originalImageData.data), originalImageData.width, originalImageData.height)
+                        : null);
+                      setShowLevels(true);
+                    }}
+                  >
+                    {t('levels.open')}
+                    <span className="rp-btn-kbd">Ctrl+L</span>
+                  </button>
+                </div>
+              )}
+
+              {rightTab === 'resize' && (
+                <div className="rp-tool-body">
+                  <p className="rp-tool-desc">{t('rp.resizeDesc')}</p>
+                  <button
+                    className="levels-trigger__btn"
+                    disabled={!imageInfo}
+                    onClick={() => {
+                      if (!originalImageData) return;
+                      setResizeOriginalImageData(new ImageData(new Uint8ClampedArray(originalImageData.data), originalImageData.width, originalImageData.height));
+                      setShowResize(true);
+                    }}
+                  >
+                    {t('resize.open')}
+                  </button>
+                </div>
+              )}
+
+              {rightTab === 'kernel' && (
+                <div className="rp-tool-body">
+                  <p className="rp-tool-desc">{t('rp.filterDesc')}</p>
+                  <button
+                    className="levels-trigger__btn"
+                    disabled={!imageInfo}
+                    onClick={() => {
+                      if (!originalImageData) return;
+                      setKernelOriginalImageData(new ImageData(new Uint8ClampedArray(originalImageData.data), originalImageData.width, originalImageData.height));
+                      setShowKernelFilter(true);
+                    }}
+                  >
+                    {t('kernel.open')}
+                  </button>
+                </div>
+              )}
+
+            </div>
           </div>
         </div>
       </div>
