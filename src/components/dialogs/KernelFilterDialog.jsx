@@ -20,6 +20,7 @@ export default function KernelFilterDialog({
   canvasRef,
   onClose,
   onApply,
+  setGlobalLoading,
 }) {
   const [kernelVals,     setKernelVals]     = useState([...IDENTITY]);
   const [selectedPreset, setSelectedPreset] = useState('identity');
@@ -153,6 +154,7 @@ export default function KernelFilterDialog({
     if (applyWorkerRef.current) return;
 
     setProcessing(true);
+    setGlobalLoading?.(true);
 
     const worker = new Worker(
       new URL('../../workers/kernelFilter.worker.js', import.meta.url),
@@ -164,20 +166,26 @@ export default function KernelFilterDialog({
     const divisor  = computeDivisor(kernelVals);
     const dataCopy = new Uint8ClampedArray(originalImageData.data);
 
-    worker.onmessage = (e) => {
+    worker.onmessage = async (e) => {
       applyWorkerRef.current = null;
       setProcessing(false);
       const newImageData = new ImageData(e.data.result, originalImageData.width, originalImageData.height);
       if (canvasRef.current) {
         canvasRef.current.getContext('2d').putImageData(newImageData, 0, 0);
       }
-      onApply?.(newImageData);
-      onClose();
+      try {
+        const p = onApply?.(newImageData);
+        if (p && typeof p.then === 'function') await p;
+      } finally {
+        setGlobalLoading?.(false);
+        onClose();
+      }
     };
 
     worker.onerror = () => {
       applyWorkerRef.current = null;
       setProcessing(false);
+      setGlobalLoading?.(false);
     };
 
     worker.postMessage(

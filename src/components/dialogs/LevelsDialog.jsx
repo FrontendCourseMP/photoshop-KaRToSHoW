@@ -72,7 +72,7 @@ function applyLUTs(src, { lutR, lutG, lutB, lutA }) {
   return out;
 }
 
-export default function LevelsDialog({ t, imageInfo, originalImageData, canvasRef, onClose, onApply, themeMode = 'dark' }) {
+export default function LevelsDialog({ t, imageInfo, originalImageData, canvasRef, onClose, onApply, themeMode = 'dark', setGlobalLoading }) {
   const depth    = imageInfo?.depth?.toLowerCase() ?? '';
   const isGray   = depth.includes('gray');
   const hasMask  = depth.includes('mask');
@@ -92,6 +92,7 @@ export default function LevelsDialog({ t, imageInfo, originalImageData, canvasRe
   const [histScale,     setHistScale]     = useState('linear');
   const [dragging,      setDragging]      = useState(null); // 'black' | 'gamma' | 'white'
   const [isDirty,       setIsDirty]       = useState(false);
+  const [processing,    setProcessing]    = useState(false);
 
   // Refs so callbacks never go stale
   const currentLevelRef  = useRef(levels[activeChannel]);
@@ -389,14 +390,26 @@ export default function LevelsDialog({ t, imageInfo, originalImageData, canvasRe
   }, [restoreOriginal, onClose]);
 
   const handleApply = () => {
-    if (originalImageData && canvasRef.current) {
-      const luts   = buildComposedLUTs(levels);
-      const out    = applyLUTs(originalImageData.data, luts);
-      const result = new ImageData(out, originalImageData.width, originalImageData.height);
-      canvasRef.current.getContext('2d').putImageData(result, 0, 0);
-      onApply?.(result);
-    }
-    onClose();
+    if (!originalImageData || !canvasRef.current) return onClose();
+
+    // Show processing UI and run apply async so spinner can render
+    setProcessing(true);
+    setGlobalLoading?.(true);
+
+    setTimeout(async () => {
+      try {
+        const luts   = buildComposedLUTs(levels);
+        const out    = applyLUTs(originalImageData.data, luts);
+        const result = new ImageData(out, originalImageData.width, originalImageData.height);
+        canvasRef.current.getContext('2d').putImageData(result, 0, 0);
+        const p = onApply?.(result);
+        if (p && typeof p.then === 'function') await p;
+      } finally {
+        setProcessing(false);
+        setGlobalLoading?.(false);
+        onClose();
+      }
+    }, 20);
   };
 
   if (!originalImageData) {
@@ -552,10 +565,10 @@ export default function LevelsDialog({ t, imageInfo, originalImageData, canvasRe
 
         {/* ── Buttons ── */}
         <div className="dialog__buttons">
-          <button className="btn btn--ghost" onClick={handleReset}>{t('levels.reset')}</button>
+          <button className="btn btn--ghost" onClick={handleReset} disabled={processing}>{t('levels.reset')}</button>
           <div style={{ flex: 1 }} />
-          <button className="btn btn--secondary" onClick={handleCancel}>{t('levels.cancel')}</button>
-          <button className="btn btn--primary"   onClick={handleApply}>{t('levels.apply')}</button>
+          <button className="btn btn--secondary" onClick={handleCancel} disabled={processing}>{t('levels.cancel')}</button>
+          <button className="btn btn--primary" onClick={handleApply} disabled={processing}>{processing ? t('levels.applying') ?? 'Applying...' : t('levels.apply')}</button>
         </div>
 
     </Dialog>

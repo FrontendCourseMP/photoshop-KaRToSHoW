@@ -35,6 +35,7 @@ import ThemeSettings from './components/ui/ThemeSettings';
 import LevelsDialog from './components/dialogs/LevelsDialog';
 import ResizeDialog from './components/dialogs/ResizeDialog';
 import KernelFilterDialog from './components/dialogs/KernelFilterDialog';
+import Loader from './components/ui/Loader';
 import { rgbToLab } from './utils/color';
 
 // Корневой компонент приложения, собирает хуки и визуальные блоки
@@ -64,6 +65,70 @@ export default function App() {
   const viewport = useViewportControls(imageInfo, viewportRef);
   const { zoom, offset, activeTool, setActiveTool, cursor, fitToScreen, fillToScreen, zoomTo100, zoomIn, zoomOut, zoomToArea, zoomOutFromArea, handleZoomChange, onMouseDown } = viewport;
   const [zoomMode, setZoomMode] = useState('in');
+  const [isLoading, setIsLoading] = useState(false);
+  const loadingCounterRef = useRef(0);
+  const loaderStartRef = useRef(0);
+  const loaderOffTimerRef = useRef(null);
+  const forceHideTimerRef = useRef(null);
+  const MIN_SHOW_MS = 600;
+  const FORCE_HIDE_MS = 30000;
+
+  const adjustLoading = (on) => {
+    if (on) {
+      // cancel pending hide
+      if (loaderOffTimerRef.current) { clearTimeout(loaderOffTimerRef.current); loaderOffTimerRef.current = null; }
+      // cancel force-hide
+      if (forceHideTimerRef.current) { clearTimeout(forceHideTimerRef.current); forceHideTimerRef.current = null; }
+
+      loadingCounterRef.current += 1;
+      loaderStartRef.current = loaderStartRef.current || Date.now();
+      setIsLoading(true);
+
+      // start a watchdog to force-hide if something never decrements
+      forceHideTimerRef.current = setTimeout(() => {
+        console.error('Loader force-hidden after timeout; counter:', loadingCounterRef.current);
+        loadingCounterRef.current = 0;
+        loaderStartRef.current = 0;
+        if (loaderOffTimerRef.current) { clearTimeout(loaderOffTimerRef.current); loaderOffTimerRef.current = null; }
+        setIsLoading(false);
+        forceHideTimerRef.current = null;
+      }, FORCE_HIDE_MS);
+      // safety cap
+      if (loadingCounterRef.current > 10) {
+        console.warn('Loader counter unusually high:', loadingCounterRef.current);
+      }
+    } else {
+      loadingCounterRef.current = Math.max(0, loadingCounterRef.current - 1);
+      if (loadingCounterRef.current === 0) {
+        const elapsed = Date.now() - (loaderStartRef.current || 0);
+        const remaining = Math.max(0, MIN_SHOW_MS - elapsed);
+        loaderOffTimerRef.current = setTimeout(() => {
+          loaderOffTimerRef.current = null;
+          loaderStartRef.current = 0;
+          if (forceHideTimerRef.current) { clearTimeout(forceHideTimerRef.current); forceHideTimerRef.current = null; }
+          setIsLoading(false);
+        }, remaining);
+      }
+    }
+  };
+
+  // Safe wrappers that show the global loader briefly during operations
+  const safeFitToScreen = () => {
+    adjustLoading(true);
+    requestAnimationFrame(() => { fitToScreen(); requestAnimationFrame(() => adjustLoading(false)); });
+  };
+  const safeFillToScreen = () => {
+    adjustLoading(true);
+    requestAnimationFrame(() => { fillToScreen(); requestAnimationFrame(() => adjustLoading(false)); });
+  };
+  const safeZoomTo100 = () => {
+    adjustLoading(true);
+    requestAnimationFrame(() => { zoomTo100(); requestAnimationFrame(() => adjustLoading(false)); });
+  };
+  const safeZoomPreset = (v) => {
+    adjustLoading(true);
+    requestAnimationFrame(() => { handleZoomChange(v); requestAnimationFrame(() => adjustLoading(false)); });
+  };
 
   const { handleFile, saveAs } = useImageManager({
     canvasRef,
@@ -72,7 +137,18 @@ export default function App() {
     setChannels,
     setError,
     t,
+    setLoading: adjustLoading,
   });
+  // Prevent opening the same file currently displayed
+  const openFileWithCheck = (file) => {
+    if (!file) return;
+    const name = file.name || '';
+    if (imageInfo?.filename && imageInfo.filename.toLowerCase() === name.toLowerCase()) {
+      setError('Нельзя загрузить тот же файл, который уже открыт');
+      return;
+    }
+    return handleFile(file);
+  };
   const fileInputRef = useRef(null);
 
   // Сбрасываем пипетку при каждой смене изображения
@@ -162,16 +238,17 @@ export default function App() {
     filtersLabel: t('menu.filters'),
     settingsLabel: t('menu.settings'),
     fileAccept: '.png,.jpg,.jpeg,.gb7',
-    actions: {
-      onOpenFile: handleFile,
+      actions: {
+      onOpenFile: openFileWithCheck,
+      setLoading: adjustLoading,
       exportPng: () => saveAs('png', imageInfo),
       exportJpeg: () => saveAs('jpg', imageInfo),
       exportGb7: () => saveAs('gb7', imageInfo),
       zoomIn,
       zoomOut,
-      fitScreen: fitToScreen,
-      actualSize: zoomTo100,
-      zoomPreset: handleZoomChange,
+      fitScreen: () => { safeFitToScreen(); },
+      actualSize: () => { safeZoomTo100(); },
+      zoomPreset: (v) => { safeZoomPreset(v); },
       setLanguage,
       showThemeSettings: () => setShowThemeSettings(true),
       showLevels: () => {
@@ -209,7 +286,7 @@ export default function App() {
       { label: t('menu.fitScreen'), disabled: !imageInfo, actionKey: 'fitScreen', shortcut: 'Ctrl+2' },
       { label: t('menu.actualSize'), disabled: !imageInfo, actionKey: 'actualSize', shortcut: 'Ctrl+1' },
       '---',
-      ...[25, 50, 100, 200, 400].map(v => ({ label: `${v}%`, disabled: !imageInfo, action: () => handleZoomChange(v / 100) })),
+      ...[25, 50, 100, 200, 400].map(v => ({ label: `${v}%`, disabled: !imageInfo, action: () => safeZoomPreset(v / 100) })),
     ],
     filters: [
       { label: t('kernel.open'), disabled: !imageInfo, actionKey: 'showKernelFilter' },
@@ -217,7 +294,7 @@ export default function App() {
     settings: [
       { label: t('menu.themeSettings'), actionKey: 'showThemeSettings', shortcut: 'Ctrl+Shift+C' },
     ],
-  }), [t, imageInfo, handleFile, saveAs, zoomIn, zoomOut, fitToScreen, zoomTo100, handleZoomChange, setLanguage, themeMode, originalImageData, setShowResize, setResizeOriginalImageData]);
+  }), [t, imageInfo, handleFile, saveAs, zoomIn, zoomOut, fitToScreen, zoomTo100, handleZoomChange, setLanguage, themeMode, originalImageData, setShowResize, setResizeOriginalImageData, adjustLoading]);
 
   const activeToolLabel = activeTool === 'hand' ? t('info.hand') : activeTool === 'eyedropper' ? t('info.eyedropper') || 'Eyedropper' : t('info.zoomTool');
 
@@ -251,12 +328,18 @@ export default function App() {
           themeMode={themeMode}
           onClose={() => setShowLevels(false)}
           onApply={(newImageData) => {
-            setOriginalImageData(new ImageData(
-              new Uint8ClampedArray(newImageData.data),
-              newImageData.width,
-              newImageData.height,
-            ));
+            return new Promise(resolve => {
+              setOriginalImageData(new ImageData(
+                new Uint8ClampedArray(newImageData.data),
+                newImageData.width,
+                newImageData.height,
+              ));
+              // let next frame handle any paint work
+              requestAnimationFrame(() => resolve());
+            });
           }}
+          setGlobalLoading={adjustLoading}
+          
         />
       )}
       {showResize && (
@@ -266,13 +349,18 @@ export default function App() {
           originalImageData={resizeOriginalImageData}
           onClose={() => setShowResize(false)}
           onApply={(newImageData, newW, newH) => {
-            if (canvasRef.current) {
-              canvasRef.current.width  = newW;
-              canvasRef.current.height = newH;
-            }
-            setOriginalImageData(newImageData);
-            setImageInfo(prev => prev ? { ...prev, width: newW, height: newH } : prev);
-            requestAnimationFrame(fitToScreen);
+            return new Promise(resolve => {
+              if (canvasRef.current) {
+                canvasRef.current.width  = newW;
+                canvasRef.current.height = newH;
+              }
+              setOriginalImageData(newImageData);
+              setImageInfo(prev => prev ? { ...prev, width: newW, height: newH } : prev);
+              requestAnimationFrame(() => {
+                fitToScreen();
+                requestAnimationFrame(() => resolve());
+              });
+            });
           }}
         />
       )}
@@ -284,15 +372,20 @@ export default function App() {
           canvasRef={canvasRef}
           onClose={() => setShowKernelFilter(false)}
           onApply={(newImageData) => {
-            setOriginalImageData(new ImageData(
-              new Uint8ClampedArray(newImageData.data),
-              newImageData.width,
-              newImageData.height,
-            ));
+            return new Promise(resolve => {
+              setOriginalImageData(new ImageData(
+                new Uint8ClampedArray(newImageData.data),
+                newImageData.width,
+                newImageData.height,
+              ));
+              requestAnimationFrame(() => resolve());
+            });
           }}
+          setGlobalLoading={adjustLoading}
         />
       )}
       <ErrorBanner t={t} error={error} onClose={clearError} />
+      {isLoading && <Loader />}
 
       {/* Панель инструментов */}
       <Toolbar
@@ -301,9 +394,9 @@ export default function App() {
         activeTool={activeTool}
         zoomMode={zoomMode}
         onSetZoomMode={setZoomMode}
-        fitToScreen={fitToScreen}
-        fillToScreen={fillToScreen}
-        zoomTo100={zoomTo100}
+        fitToScreen={safeFitToScreen}
+        fillToScreen={safeFillToScreen}
+        zoomTo100={safeZoomTo100}
       />
 
       {/* Основная область в три колонки */}
@@ -338,7 +431,7 @@ export default function App() {
               }
             }
           }}
-          onOpenFile={handleFile}
+          onOpenFile={openFileWithCheck}
           onError={setError}
           canvasRef={canvasRef}
           viewportRef={viewportRef}

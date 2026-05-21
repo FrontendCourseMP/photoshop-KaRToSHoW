@@ -55,7 +55,25 @@ export default function MenuBar({ menuConfig, fileInputRef }) {
         type="file"
         accept={fileAccept}
         style={{ display: 'none' }}
-        onChange={e => actions?.onOpenFile?.(e.target.files[0])}
+        onChange={e => {
+          const f = e.target.files[0];
+          if (!f) return;
+          // If provided, notify actions to show loader immediately
+          const setLoading = actions?.setLoading;
+          try {
+            setLoading?.(true);
+            const p = actions?.onOpenFile?.(f);
+            if (p && typeof p.then === 'function') {
+              p.finally(() => setLoading?.(false));
+            } else {
+              // onOpenFile did not return a promise — hide loader now
+              setLoading?.(false);
+            }
+          } catch (err) {
+            setLoading?.(false);
+            throw err;
+          }
+        }}
       />
     </div>
   );

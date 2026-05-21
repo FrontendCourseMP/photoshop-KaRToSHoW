@@ -32,6 +32,7 @@ export default function useImageManager({
   setChannels,
   setError,
   t,
+  setLoading,
 }) {
   // Токен предотвращает гонку: если пользователь открыл файл B пока грузился A,
   // устаревший результат A будет проигнорирован.
@@ -77,6 +78,9 @@ export default function useImageManager({
 
     // Очищаем холст и состояние до начала асинхронной загрузки:
     // пользователь сразу видит пустой canvas, а не остатки предыдущего файла.
+    // show loader immediately for visual feedback
+    setLoading?.(true);
+
     clearCanvas();
     setImageInfo(null);
     setOriginalImageData(null);
@@ -92,8 +96,10 @@ export default function useImageManager({
       if (token !== loadTokenRef.current) return;
       // Ошибки GB7 уже содержат префикс "GB7:"; остальные переводим
       setError(err.message.startsWith('GB7:') ? err.message : t('error.cannotLoad'));
+    } finally {
+      setLoading?.(false);
     }
-  }, [clearCanvas, renderToCanvas, commit, setImageInfo, setOriginalImageData, setChannels, setError, t]);
+  }, [clearCanvas, renderToCanvas, commit, setImageInfo, setOriginalImageData, setChannels, setError, t, setLoading]);
 
   const saveAs = useCallback((fmt, imageInfo) => {
     const c = canvasRef.current;
