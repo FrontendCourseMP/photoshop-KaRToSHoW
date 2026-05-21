@@ -6,7 +6,7 @@ import { ZOOM_PRESETS } from '../../utils/zoom';
 export default function MenuBar({ menuConfig, fileInputRef }) {
   const localFileInputRef = useRef(null);
   const fileRef = fileInputRef ?? localFileInputRef;
-  const { fileLabel, viewLabel, settingsLabel, fileAccept, file, view, settings, actions } = menuConfig;
+  const { fileLabel, viewLabel, filtersLabel, settingsLabel, fileAccept, file, view, filters, settings, actions } = menuConfig;
 
   // Сопоставляет ключ действия с переданной функцией или обработчиком
   const resolveAction = (item) => {
@@ -24,8 +24,9 @@ export default function MenuBar({ menuConfig, fileInputRef }) {
     };
   };
 
-  const resolvedFileItems = file.map(resolveItem);
-  const resolvedViewItems = view.map(resolveItem);
+  const resolvedFileItems     = file.map(resolveItem);
+  const resolvedViewItems     = view.map(resolveItem);
+  const resolvedFiltersItems  = filters ? filters.map(resolveItem) : null;
   const resolvedSettingsItems = settings.map(resolveItem);
   const settingsAction = resolvedSettingsItems.length === 1 && !resolvedSettingsItems[0].children
     ? resolvedSettingsItems[0].action
@@ -39,6 +40,9 @@ export default function MenuBar({ menuConfig, fileInputRef }) {
       </span>
       <Menu label={fileLabel} items={resolvedFileItems} />
       <Menu label={viewLabel} items={resolvedViewItems} />
+      {resolvedFiltersItems && filtersLabel && (
+        <Menu label={filtersLabel} items={resolvedFiltersItems} />
+      )}
       {settingsAction ? (
         <button className="menu__trigger" type="button" onClick={settingsAction}>
           {settingsLabel}

@@ -34,6 +34,7 @@ import ErrorBanner from './components/ui/ErrorBanner';
 import ThemeSettings from './components/ui/ThemeSettings';
 import LevelsDialog from './components/dialogs/LevelsDialog';
 import ResizeDialog from './components/dialogs/ResizeDialog';
+import KernelFilterDialog from './components/dialogs/KernelFilterDialog';
 import { rgbToLab } from './utils/color';
 
 // Корневой компонент приложения, собирает хуки и визуальные блоки
@@ -54,6 +55,8 @@ export default function App() {
   const [levelsOriginalImageData, setLevelsOriginalImageData] = useState(null);
   const [showResize, setShowResize] = useState(false);
   const [resizeOriginalImageData, setResizeOriginalImageData] = useState(null);
+  const [showKernelFilter, setShowKernelFilter] = useState(false);
+  const [kernelOriginalImageData, setKernelOriginalImageData] = useState(null);
   const [showThemeSettings, setShowThemeSettings] = useState(false);
   const { error, setError, clearError } = useErrorState();
 
@@ -155,6 +158,7 @@ export default function App() {
   const menuConfig = useMemo(() => ({
     fileLabel: t('menu.file'),
     viewLabel: t('menu.view'),
+    filtersLabel: t('menu.filters'),
     settingsLabel: t('menu.settings'),
     fileAccept: '.png,.jpg,.jpeg,.gb7',
     actions: {
@@ -178,6 +182,11 @@ export default function App() {
         setResizeOriginalImageData(new ImageData(new Uint8ClampedArray(originalImageData.data), originalImageData.width, originalImageData.height));
         setShowResize(true);
       },
+      showKernelFilter: () => {
+        if (!originalImageData) return;
+        setKernelOriginalImageData(new ImageData(new Uint8ClampedArray(originalImageData.data), originalImageData.width, originalImageData.height));
+        setShowKernelFilter(true);
+      },
       themeLight: () => setThemeMode('light'),
       themeDark: () => setThemeMode('dark'),
       languageEnglish: () => setLanguage('en'),
@@ -200,6 +209,9 @@ export default function App() {
       { label: t('menu.actualSize'), disabled: !imageInfo, actionKey: 'actualSize', shortcut: 'Ctrl+1' },
       '---',
       ...[25, 50, 100, 200, 400].map(v => ({ label: `${v}%`, disabled: !imageInfo, action: () => handleZoomChange(v / 100) })),
+    ],
+    filters: [
+      { label: t('kernel.open'), disabled: !imageInfo, actionKey: 'showKernelFilter' },
     ],
     settings: [
       { label: t('menu.themeSettings'), actionKey: 'showThemeSettings', shortcut: 'Ctrl+Shift+C' },
@@ -260,6 +272,22 @@ export default function App() {
             setOriginalImageData(newImageData);
             setImageInfo(prev => prev ? { ...prev, width: newW, height: newH } : prev);
             requestAnimationFrame(fitToScreen);
+          }}
+        />
+      )}
+      {showKernelFilter && (
+        <KernelFilterDialog
+          t={t}
+          imageInfo={imageInfo}
+          originalImageData={kernelOriginalImageData}
+          canvasRef={canvasRef}
+          onClose={() => setShowKernelFilter(false)}
+          onApply={(newImageData) => {
+            setOriginalImageData(new ImageData(
+              new Uint8ClampedArray(newImageData.data),
+              newImageData.width,
+              newImageData.height,
+            ));
           }}
         />
       )}
@@ -359,6 +387,21 @@ export default function App() {
               }}
             >
               {t('resize.open')}
+            </button>
+          </div>
+
+          <div className="info-section levels-trigger">
+            <h3 className="info-section__title">{t('kernel.title')}</h3>
+            <button
+              className="levels-trigger__btn"
+              disabled={!imageInfo}
+              onClick={() => {
+                if (!originalImageData) return;
+                setKernelOriginalImageData(new ImageData(new Uint8ClampedArray(originalImageData.data), originalImageData.width, originalImageData.height));
+                setShowKernelFilter(true);
+              }}
+            >
+              {t('kernel.open')}
             </button>
           </div>
         </div>

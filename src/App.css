@@ -1954,6 +1954,159 @@ button:disabled { cursor: not-allowed; }
   border-left: 2px solid var(--c-accent-border);
 }
 
+/* ── Kernel Filter Dialog ────────────────────────────────────────────────── */
+.kernel__section {
+  margin-bottom: 16px;
+}
+
+.kernel__section--row {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  margin-bottom: 14px;
+}
+
+.kernel__label {
+  display: block;
+  font-family: var(--font-ui);
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--c-text-2);
+  margin-bottom: 8px;
+}
+
+.kernel__select {
+  width: 100%;
+  padding: 6px 10px;
+  background: var(--c-raised);
+  border: 1px solid var(--c-border);
+  border-radius: var(--radius);
+  color: var(--c-text);
+  font-family: var(--font-mono);
+  font-size: 11px;
+  cursor: pointer;
+  outline: none;
+  appearance: none;
+  -webkit-appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M0 0l5 6 5-6z' fill='%23888'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 10px center;
+  padding-right: 28px;
+  transition: border-color 0.12s;
+}
+
+.kernel__select:focus {
+  border-color: var(--c-accent);
+}
+
+.kernel__select option {
+  background: var(--c-panel);
+  color: var(--c-text);
+}
+
+/* 3×3 grid */
+.kernel__grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 5px;
+}
+
+.kernel__cell {
+  width: 100%;
+  height: 40px;
+  padding: 4px 6px;
+  background: var(--c-raised);
+  border: 1px solid var(--c-border);
+  border-radius: var(--radius);
+  color: var(--c-text);
+  font-family: var(--font-mono);
+  font-size: 13px;
+  text-align: center;
+  outline: none;
+  transition: border-color 0.12s, background 0.12s;
+}
+
+.kernel__cell:focus {
+  border-color: var(--c-accent);
+  background: var(--c-hover);
+}
+
+.kernel__cell::-webkit-outer-spin-button,
+.kernel__cell::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
+.kernel__cell[type=number] { -moz-appearance: textfield; }
+
+/* Channel checkboxes */
+.kernel__channels {
+  display: flex;
+  gap: 18px;
+}
+
+.kernel__checkbox {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  cursor: pointer;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--c-text-2);
+  user-select: none;
+  transition: color 0.1s;
+}
+
+.kernel__checkbox:hover { color: var(--c-text); }
+
+.kernel__checkbox input[type="checkbox"] {
+  width: 13px;
+  height: 13px;
+  accent-color: var(--c-accent);
+  cursor: pointer;
+}
+
+/* Edge handling radios */
+.kernel__radios {
+  display: flex;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.kernel__radio {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  cursor: pointer;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--c-text-2);
+  user-select: none;
+  transition: color 0.1s;
+}
+
+.kernel__radio:hover { color: var(--c-text); }
+
+.kernel__radio input[type="radio"] {
+  accent-color: var(--c-accent);
+  cursor: pointer;
+}
+
+/* Processing indicator */
+.kernel__processing {
+  font-family: var(--font-ui);
+  font-size: 11px;
+  color: var(--c-accent);
+  animation: kernelPulse 1.1s ease-in-out infinite;
+}
+
+@keyframes kernelPulse {
+  0%, 100% { opacity: 1; }
+  50%       { opacity: 0.35; }
+}
+
 /* ── Responsive ── */
 @media (max-width: 600px) {
   :root { --info-w: 0px; }
