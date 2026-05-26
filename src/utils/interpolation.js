@@ -89,6 +89,26 @@ export const INTERPOLATION_METHODS = [
   },
 ];
 
+// Линейная интерполяция: t=0 → a, t=1 → b
+export function lerp(a, b, t) {
+  return a + (b - a) * t;
+}
+
+// Обратная линейная интерполяция: возвращает t для заданного v в [a, b]
+export function invLerp(a, b, v) {
+  return (v - a) / (b - a);
+}
+
+// Логарифмическая интерполяция: t=0 → a, t=1 → b (для мультипликативных шкал)
+export function logLerp(a, b, t) {
+  return a * Math.pow(b / a, Math.max(0, Math.min(1, t)));
+}
+
+// Обратная логарифмическая интерполяция: возвращает t ∈ [0,1] для v в [a, b]
+export function invLogLerp(a, b, v) {
+  return Math.log(v / a) / Math.log(b / a);
+}
+
 // ─── Публичный API ────────────────────────────────────────────────────────────
 /**
  * Масштабирует ImageData до заданных размеров.

@@ -1,4 +1,4 @@
-export default function InfoPanel({ t, imageInfo, zoom, activeToolLabel, eyedropper }) {
+export default function InfoPanel({ t, imageInfo, zoom, zoomRaw, activeToolLabel, eyedropper }) {
   // Вычисляем HEX из RGB
   const toHex = (r, g, b) =>
     '#' + [r, g, b].map(v => v.toString(16).padStart(2, '0')).join('').toUpperCase();
@@ -40,6 +40,12 @@ export default function InfoPanel({ t, imageInfo, zoom, activeToolLabel, eyedrop
         <dl className="info-list">
           <dt>{t('info.zoom')}</dt>
           <dd className="info-accent" style={{ fontSize: 12, fontWeight: 600 }}>{zoom}</dd>
+          {imageInfo && zoomRaw != null && <>
+            <dt>{t('info.displaySize')}</dt>
+            <dd style={{ fontSize: 10 }}>
+              {Math.round(imageInfo.width * zoomRaw)} × {Math.round(imageInfo.height * zoomRaw)} <span style={{ color: 'var(--c-text-3)' }}>px</span>
+            </dd>
+          </>}
           <dt>{t('info.tool')}</dt>
           <dd style={{ fontSize: 10 }}>{activeToolLabel}</dd>
         </dl>

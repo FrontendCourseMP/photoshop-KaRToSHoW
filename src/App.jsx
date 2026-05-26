@@ -112,23 +112,10 @@ export default function App() {
     }
   };
 
-  // Safe wrappers that show the global loader briefly during operations
-  const safeFitToScreen = () => {
-    adjustLoading(true);
-    requestAnimationFrame(() => { fitToScreen(); requestAnimationFrame(() => adjustLoading(false)); });
-  };
-  const safeFillToScreen = () => {
-    adjustLoading(true);
-    requestAnimationFrame(() => { fillToScreen(); requestAnimationFrame(() => adjustLoading(false)); });
-  };
-  const safeZoomTo100 = () => {
-    adjustLoading(true);
-    requestAnimationFrame(() => { zoomTo100(); requestAnimationFrame(() => adjustLoading(false)); });
-  };
-  const safeZoomPreset = (v) => {
-    adjustLoading(true);
-    requestAnimationFrame(() => { handleZoomChange(v); requestAnimationFrame(() => adjustLoading(false)); });
-  };
+  const safeFitToScreen  = fitToScreen;
+  const safeFillToScreen = fillToScreen;
+  const safeZoomTo100    = zoomTo100;
+  const safeZoomPreset   = handleZoomChange;
 
   const { handleFile, saveAs } = useImageManager({
     canvasRef,
@@ -289,6 +276,8 @@ export default function App() {
       ...[25, 50, 100, 200, 400].map(v => ({ label: `${v}%`, disabled: !imageInfo, action: () => safeZoomPreset(v / 100) })),
     ],
     filters: [
+      { label: t('levels.open'), disabled: !imageInfo, actionKey: 'showLevels', shortcut: 'Ctrl+L' },
+      '---',
       { label: t('kernel.open'), disabled: !imageInfo, actionKey: 'showKernelFilter' },
     ],
     settings: [
@@ -447,7 +436,7 @@ export default function App() {
 
         {/* Правая панель информации */}
         <div className="right-panel">
-          <InfoPanel t={t} imageInfo={imageInfo} zoom={formatZoom(zoom)} activeToolLabel={activeToolLabel} eyedropper={eyedropper} />
+          <InfoPanel t={t} imageInfo={imageInfo} zoom={formatZoom(zoom)} zoomRaw={zoom} activeToolLabel={activeToolLabel} eyedropper={eyedropper} />
           <ChannelsPanel t={t} imageInfo={imageInfo} originalImageData={originalImageData} channels={channels} setChannels={setChannels} />
 
           {/* ── Переключалка инструментов ── */}
@@ -529,7 +518,7 @@ export default function App() {
       </div>
 
       {/* Строка состояния */}
-      <StatusBar t={t} imageInfo={imageInfo} zoom={formatZoom(zoom)} />
+      <StatusBar t={t} imageInfo={imageInfo} zoom={formatZoom(zoom)} zoomRaw={zoom} onZoomChange={handleZoomChange} />
     </div>
   );
 }

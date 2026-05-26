@@ -140,15 +140,7 @@ export default function LevelsDialog({ t, imageInfo, originalImageData, canvasRe
 
     // Background
     ctx.clearRect(0, 0, W, H);
-    const bg = ctx.createLinearGradient(0, 0, 0, H);
-    if (isLight) {
-      bg.addColorStop(0, '#eeeef5');
-      bg.addColorStop(1, '#e6e6f0');
-    } else {
-      bg.addColorStop(0, '#0f0f14');
-      bg.addColorStop(1, '#0a0a0d');
-    }
-    ctx.fillStyle = bg;
+    ctx.fillStyle = isLight ? '#e8e8f0' : '#0c0c10';
     ctx.fillRect(0, 0, W, H);
 
     // Grid
@@ -177,12 +169,7 @@ export default function LevelsDialog({ t, imageInfo, originalImageData, canvasRe
     const MARKER_H = 14;      // px reserved at bottom for marker triangles
     const drawH    = H - MARKER_H;
 
-    // Fill
-    const fillGrad = ctx.createLinearGradient(0, 0, 0, drawH);
-    fillGrad.addColorStop(0,   color.glow.replace('0.35', '0.55'));
-    fillGrad.addColorStop(0.6, color.glow.replace('0.35', '0.18'));
-    fillGrad.addColorStop(1,   'rgba(0,0,0,0)');
-
+    // Fill (solid, low opacity)
     ctx.beginPath();
     ctx.moveTo(0, drawH);
     for (let i = 0; i < 256; i++) {
@@ -195,7 +182,7 @@ export default function LevelsDialog({ t, imageInfo, originalImageData, canvasRe
     }
     ctx.lineTo(W, drawH);
     ctx.closePath();
-    ctx.fillStyle = fillGrad;
+    ctx.fillStyle = color.glow.replace('0.35', '0.20');
     ctx.fill();
 
     // Stroke
