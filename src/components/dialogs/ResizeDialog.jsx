@@ -5,7 +5,7 @@ import Dialog from '../ui/Dialog';
 const MIN_PX  = 1;
 const MAX_PX  = 32000;
 const MIN_PCT = 1;
-const MAX_PCT = 3000;
+const MAX_PCT = 300;
 
 function clampStr(val, min, max) {
   const n = parseFloat(val);
@@ -57,22 +57,33 @@ export default function ResizeDialog({ t, imageInfo, originalImageData, onClose,
   const currentMethod = INTERPOLATION_METHODS.find(m => m.id === methodId) ?? INTERPOLATION_METHODS[0];
 
   // ── W/H handlers ──────────────────────────────────────────────────────────
+  const clampInput = (val) => {
+    if (unit !== 'percent') return val;
+    const n = parseFloat(val);
+    if (isNaN(n)) return val;
+    if (n > MAX_PCT) return String(MAX_PCT);
+    if (n < MIN_PCT) return String(MIN_PCT);
+    return val;
+  };
+
   const handleW = (val) => {
-    setWVal(val);
+    const clamped = clampInput(val);
+    setWVal(clamped);
     clearErr('w');
     if (!lock) return;
-    const n = parseFloat(val);
+    const n = parseFloat(clamped);
     if (!isNaN(n) && n > 0)
-      setHVal(unit === 'percent' ? val : String(Math.max(1, Math.round(n * origH / origW))));
+      setHVal(unit === 'percent' ? clamped : String(Math.max(1, Math.round(n * origH / origW))));
   };
 
   const handleH = (val) => {
-    setHVal(val);
+    const clamped = clampInput(val);
+    setHVal(clamped);
     clearErr('h');
     if (!lock) return;
-    const n = parseFloat(val);
+    const n = parseFloat(clamped);
     if (!isNaN(n) && n > 0)
-      setWVal(unit === 'percent' ? val : String(Math.max(1, Math.round(n * origW / origH))));
+      setWVal(unit === 'percent' ? clamped : String(Math.max(1, Math.round(n * origW / origH))));
   };
 
   const handleUnit = (u) => {

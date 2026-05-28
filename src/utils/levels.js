@@ -18,12 +18,15 @@ export function buildLUT(blackPoint, gamma, whitePoint, outputBlack = 0, outputW
     let normalized = (i - blackPoint) / inputRange;
     normalized = Math.max(0, Math.min(1, normalized));
     
-    // Apply gamma correction (power function)
+    // Apply gamma correction: output = input^gamma
+    // gamma > 1  → darkens midtones (slider right)
+    // gamma < 1  → lightens midtones (slider left)
+    // gamma = 1  → identity (linear)
     let corrected;
     if (gamma === 1.0) {
       corrected = normalized;
     } else {
-      corrected = Math.pow(normalized, 1 / gamma);
+      corrected = Math.pow(normalized, gamma);
     }
     
     // Map to output range

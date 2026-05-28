@@ -142,6 +142,9 @@ export default function App() {
   useEffect(() => { setEyedropper(null); }, [imageInfo]);
 
   useEffect(() => {
+    // Dialogs (Levels, KernelFilter) manage the canvas themselves while open —
+    // skip channel compositing so their live preview is not overwritten.
+    if (showLevels || showKernelFilter) return;
     if (!originalImageData || !canvasRef.current) return;
     const c = canvasRef.current;
     const ctx = c.getContext('2d');
@@ -179,7 +182,7 @@ export default function App() {
       out[i] = nr; out[i + 1] = ng; out[i + 2] = nb; out[i + 3] = na;
     }
     ctx.putImageData(new ImageData(out, w, h), 0, 0);
-  }, [originalImageData, channels]);
+  }, [originalImageData, channels, showLevels, showKernelFilter]);
 
   const accentSoft = useMemo(() => lightenColor(accentColor, 0.6), [accentColor]);
   const accentBg = useMemo(() => {

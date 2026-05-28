@@ -21,22 +21,22 @@ const CHANNEL_COLORS = {
 
 /**
  * The input value that maps to output=0.5 (mid-gray) given gamma.
- * Solving: ((x - black)/(white - black))^(1/gamma) = 0.5
- *      →   (x - black)/(white - black) = 0.5^gamma
+ * Formula: output = input^gamma → solve for input when output = 0.5:
+ *   0.5 = t^gamma  →  t = 0.5^(1/gamma)
  */
 function gammaToPos(black, white, gamma) {
-  return black + (white - black) * Math.pow(0.5, gamma);
+  return black + (white - black) * Math.pow(0.5, 1 / gamma);
 }
 
 /**
  * Given a drag position (as an input value in [black,white]),
  * recover the gamma that would place the mid-point there.
- * Solving: t = 0.5^gamma  →  gamma = log(t)/log(0.5)
+ * t = 0.5^(1/gamma)  →  log(t) = log(0.5)/gamma  →  gamma = log(0.5)/log(t)
  */
 function posToGamma(pos, black, white) {
   const range = Math.max(1, white - black);
   const t = Math.max(0.0001, Math.min(0.9999, (pos - black) / range));
-  return Math.max(0.1, Math.min(9.9, Math.log(t) / Math.log(0.5)));
+  return Math.max(0.1, Math.min(9.9, Math.log(0.5) / Math.log(t)));
 }
 
 /**
@@ -121,10 +121,16 @@ export default function LevelsDialog({ t, imageInfo, originalImageData, canvasRe
     return buildHistogram(originalImageData, ch);
   }, [originalImageData, activeChannel, isGray]);
 
-  const normalizedHist = useMemo(
-    () => histogram ? normalizeHistogram(histogram, histScale) : null,
-    [histogram, histScale],
-  );
+  // Remap the histogram through the current levels LUT so the graph itself
+  // reshapes live as black / gamma / white change (output histogram).
+  const normalizedHist = useMemo(() => {
+    if (!histogram) return null;
+    const lv  = levels[activeChannel];
+    const lut = buildLUT(lv.black, lv.gamma, lv.white);
+    const remapped = new Uint32Array(256);
+    for (let i = 0; i < 256; i++) remapped[lut[i]] += histogram[i];
+    return normalizeHistogram(remapped, histScale);
+  }, [histogram, histScale, levels, activeChannel]);
 
   const currentLevels = useMemo(() => levels[activeChannel], [levels, activeChannel]);
 
@@ -169,45 +175,55 @@ export default function LevelsDialog({ t, imageInfo, originalImageData, canvasRe
     const MARKER_H = 14;      // px reserved at bottom for marker triangles
     const drawH    = H - MARKER_H;
 
-    // Fill (solid, low opacity)
-    ctx.beginPath();
-    ctx.moveTo(0, drawH);
-    for (let i = 0; i < 256; i++) {
-      const x  = (i / 255) * W;
-      const y  = drawH - sm[i] * drawH;
-      const px = ((i - 1) / 255) * W;
-      if (i === 0) { ctx.lineTo(x, y); continue; }
-      const cpx = px + (x - px) / 3;
-      ctx.bezierCurveTo(cpx, drawH - sm[Math.max(0, i - 1)] * drawH, x - (x - px) / 3, y, x, y);
-    }
-    ctx.lineTo(W, drawH);
-    ctx.closePath();
-    ctx.fillStyle = color.glow.replace('0.35', '0.20');
-    ctx.fill();
-
-    // Stroke
-    ctx.save();
-    ctx.shadowColor = color.glow;
-    ctx.shadowBlur  = 6;
-    ctx.beginPath();
-    ctx.moveTo(0, drawH - sm[0] * drawH);
-    for (let i = 1; i < 256; i++) {
-      const x  = (i / 255) * W;
-      const y  = drawH - sm[i] * drawH;
-      const px = ((i - 1) / 255) * W;
-      const cpx = px + (x - px) / 3;
-      ctx.bezierCurveTo(cpx, drawH - sm[Math.max(0, i - 1)] * drawH, x - (x - px) / 3, y, x, y);
-    }
-    ctx.strokeStyle = color.stroke;
-    ctx.lineWidth   = 1.5;
-    ctx.stroke();
-    ctx.restore();
-
-    // ── Marker positions ───────────────────────────────────────────────────
+    // ── Marker positions (needed for clipping region) ─────────────────────
     const { black, white, gamma } = currentLevels;
     const blackX = (black / 255) * W;
     const whiteX = (white / 255) * W;
     const gammaX = (gammaToPos(black, white, gamma) / 255) * W;
+
+    // ── Helpers: build the curve paths ────────────────────────────────────
+    const buildFillPath = () => {
+      ctx.beginPath();
+      ctx.moveTo(0, drawH);
+      for (let i = 0; i < 256; i++) {
+        const x  = (i / 255) * W;
+        const y  = drawH - sm[i] * drawH;
+        const px = ((i - 1) / 255) * W;
+        if (i === 0) { ctx.lineTo(x, y); continue; }
+        const cpx = px + (x - px) / 3;
+        ctx.bezierCurveTo(cpx, drawH - sm[Math.max(0, i - 1)] * drawH, x - (x - px) / 3, y, x, y);
+      }
+      ctx.lineTo(W, drawH);
+      ctx.closePath();
+    };
+
+    const buildStrokePath = () => {
+      ctx.beginPath();
+      ctx.moveTo(0, drawH - sm[0] * drawH);
+      for (let i = 1; i < 256; i++) {
+        const x  = (i / 255) * W;
+        const y  = drawH - sm[i] * drawH;
+        const px = ((i - 1) / 255) * W;
+        const cpx = px + (x - px) / 3;
+        ctx.bezierCurveTo(cpx, drawH - sm[Math.max(0, i - 1)] * drawH, x - (x - px) / 3, y, x, y);
+      }
+    };
+
+    // ── Draw the (remapped) histogram across full width ──────────────────
+    // The curve itself already reshapes because normalizedHist is the output
+    // histogram (input data pushed through the levels LUT).
+    buildFillPath();
+    ctx.fillStyle = color.glow.replace('0.35', '0.20');
+    ctx.fill();
+
+    ctx.save();
+    ctx.shadowColor = color.glow;
+    ctx.shadowBlur  = 6;
+    buildStrokePath();
+    ctx.strokeStyle = color.stroke;
+    ctx.lineWidth   = 1.5;
+    ctx.stroke();
+    ctx.restore();
 
     const TRI = 7;          // half-width of triangle base
     const TH  = 10;         // triangle height
@@ -242,22 +258,6 @@ export default function LevelsDialog({ t, imageInfo, originalImageData, canvasRe
       ctx.stroke();
       ctx.restore();
     };
-
-    // Clipping overlays
-    if (black > 0) {
-      const g = ctx.createLinearGradient(0, 0, Math.min(blackX, 30), 0);
-      g.addColorStop(0, 'rgba(80,80,255,0.25)');
-      g.addColorStop(1, 'rgba(80,80,255,0)');
-      ctx.fillStyle = g;
-      ctx.fillRect(0, 0, blackX, drawH);
-    }
-    if (white < 255) {
-      const g = ctx.createLinearGradient(whiteX, 0, W, 0);
-      g.addColorStop(0, 'rgba(255,80,80,0)');
-      g.addColorStop(1, 'rgba(255,80,80,0.25)');
-      ctx.fillStyle = g;
-      ctx.fillRect(whiteX, 0, W - whiteX, drawH);
-    }
 
     // Black marker
     drawRule(blackX, ruleColor);

@@ -665,7 +665,7 @@ button:disabled { cursor: not-allowed; }
   display: block;
   /* Шахматка через CSS — видна через прозрачные пиксели */
   box-shadow: var(--c-shadow);
-  image-rendering: pixelated;
+  image-rendering: auto;
 }
 
 /* Шахматка за холстом */
